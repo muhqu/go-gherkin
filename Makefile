@@ -1,7 +1,10 @@
 
 .default: gherkin.peg.go
 
-.PHONY: clean test
+.PHONY: clean test get-deps
+
+get-deps:
+	go get github.com/pointlander/peg
 
 gherkin.peg.go: gherkin.peg
 	[ -n "$$(which peg)" ] || (echo "Error: missing peg executable.\n\
