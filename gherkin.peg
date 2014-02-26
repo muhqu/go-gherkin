@@ -1,0 +1,104 @@
+package gherkin
+
+type gherkinPeg Peg {
+  gherkinPegBase
+
+  buffer2 string
+  tagBuffer []string
+}
+
+Begin <- 
+  Feature?
+  OS !.
+
+Feature <- 
+  Tags 'Feature:' WS* <StringToEndOfLine> WSNLEOF
+  { p.buffer2 = buffer[begin:end] } 
+  <( (WS* !('Background:' / 'Scenario:' / 'Scenario Outline:') StringToEndOfLine WSNLEOF)+ )?>
+  { p.beginFeature(p.buffer2, buffer[begin:end], p.tagBuffer); p.tagBuffer = nil } 
+  ( Background / Scenario / Outline / MLWS )*
+  { p.endFeature() }
+
+Background <- 
+  Tags 'Background:' WS* <StringToEndOfLine?> WSNLEOF
+  { p.beginBackground(buffer[begin:end], p.tagBuffer); p.tagBuffer = nil } 
+  Step*
+  { p.endBackground() } 
+
+Scenario <- 
+  Tags 'Scenario:' WS* <StringToEndOfLine?> WSNLEOF
+  { p.beginScenario(buffer[begin:end], p.tagBuffer); p.tagBuffer = nil } 
+  Step* 
+  { p.endScenario() }
+
+Outline <- 
+  Tags 'Scenario Outline:' WS* <StringToEndOfLine?> WSNLEOF
+  { p.beginOutline(buffer[begin:end], p.tagBuffer); p.tagBuffer = nil } 
+  Step*
+  OutlineExamples?
+  { p.endOutline() } 
+
+OutlineExamples <-
+  OS 'Examples:' WSNLEOF
+  { p.beginOutlineExamples() } 
+  Table?
+  { p.endOutlineExamples() } 
+
+Step <- 
+  Tags <('Given' / 'When' / 'Then' / 'And' / 'Or' / 'But')> 
+  { p.buffer2 = buffer[begin:end] }
+  WS* <StringToEndOfLine> WSNLEOF
+  { p.beginStep(p.buffer2, buffer[begin:end]) } 
+  StepArgument?
+  { p.endStep() }
+
+StepArgument
+  <- Table
+   / PyString
+
+PyString <-
+  (WS* NL)* <WS*> PyStringQuote NL
+  { p.beginPyString(buffer[begin:end]) }
+  (!(WS* PyStringQuote) PyStringLine)*
+  WS* PyStringQuote WSNLEOF
+  { p.endPyString() }
+
+PyStringQuote <- '\"' '\"' '\"'
+
+PyStringLine <-
+  < StringToEndOfLine NL >
+  { p.bufferPyString(buffer[begin:end]) }
+
+Table <-
+  { p.beginTable() }
+  TableRow+
+  { p.endTable() }
+
+TableRow <-
+  { p.beginTableRow() }
+  OS '|' TableCell+ WSNLEOF
+  { p.endTableRow() }
+
+TableCell <-
+  <( [^\r\n|]+ )> '|'
+  { p.beginTableCell(); p.endTableCell(buffer[begin:end]) }
+
+
+Tags <-
+  Tag* OS
+
+Tag <-
+  OS '@' <( [^\r\n\t ]+ )>
+  { p.tagBuffer = append(p.tagBuffer, buffer[begin:end]) }
+
+StringToEndOfLine <- [^\n]+
+
+OS <- (NL/WS)*
+
+WS <- (' ' / '\t')
+
+NL <- ('\n' / '\r' / '\r\n')
+
+WSNLEOF <- WS* (NL / !.)
+
+MLWS <- (WS* NL)+
