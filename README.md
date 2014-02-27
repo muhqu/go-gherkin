@@ -6,6 +6,16 @@ Go Gherkin package
 Package gherkin implements a parser for the Gherkin language, used for
 Story/Feature based Behavior Driven Development.
 
+The parser is generated via [@pointlander]'s awesome [peg] parser generator. 
+
+Install
+-------
+```bash
+make get-deps
+make
+make test
+```
+
 Usage Example
 -------------
 ```go
@@ -59,4 +69,5 @@ Author
 | ![](http://gravatar.com/avatar/0ad964bc2b83e0977d8f70816eda1c70) | © 2014 by Mathias Leppich <br>  [github.com/muhqu](https://github.com/muhqu), [@muhqu](http://twitter.com/muhqu) |
 |   |   |
 
-
+[@pointlander]: http://github.com/pointlander
+[peg]: http://github.com/pointlander/peg
