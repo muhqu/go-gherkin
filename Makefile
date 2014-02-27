@@ -10,6 +10,7 @@ peg=$(shell which peg \
 
 get-deps:
 	go get github.com/pointlander/peg
+	go get github.com/stretchr/testify/assert
 
 gherkin.peg.go: gherkin.peg
 	$(peg) -switch -inline gherkin.peg
