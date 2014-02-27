@@ -8,6 +8,8 @@ Story/Feature based Behavior Driven Development.
 
 The parser is generated via [@pointlander]'s awesome [peg] parser generator. 
 
+Read the [Documentation][godoc] over at [godoc.org][godoc].
+
 Install
 -------
 ```bash
@@ -69,5 +71,6 @@ Author
 | ![](http://gravatar.com/avatar/0ad964bc2b83e0977d8f70816eda1c70) | © 2014 by Mathias Leppich <br>  [github.com/muhqu](https://github.com/muhqu), [@muhqu](http://twitter.com/muhqu) |
 |   |   |
 
+[godoc]: http://godoc.org/github.com/muhqu/go-gherkin
 [@pointlander]: http://github.com/pointlander
 [peg]: http://github.com/pointlander/peg
