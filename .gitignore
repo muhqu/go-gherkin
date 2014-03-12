@@ -1,1 +1,2 @@
-gherkin.peg.go
+*.peg.go
+*.out

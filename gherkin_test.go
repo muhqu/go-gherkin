@@ -95,6 +95,70 @@ func verifyDeadSimpleCalculator(t *testing.T, logPrefix, text string) {
 	assert.Equal(t, "  2\n+ 2\n+ 5\n  =\n", scenario3.Steps()[0].PyString().String())
 }
 
+const benchmarkGherkinText = `
+@dead @simple
+Feature: Dead Simple Calculator
+  Bla Bla
+  Bla
+
+  Background:
+    Given a Simple Calculator
+
+  @wip
+  Scenario: Adding 2 numbers
+     When I press the key "2"
+      And I press the key "+"
+	  And I press the key "2"
+      And I press the key "="
+     Then the result should be 4
+
+  @wip @expensive
+  Scenario Outline: Simple Math
+     When I press the key "<left>"
+      And I press the key "<operator>"
+	  And I press the key "<right>"
+      And I press the key "="
+     Then the result should be "<result>"
+
+    Examples:
+     | left   | operator | right   | result |
+     | 2      | +        | 2       | 4      |
+     | 3      | +        | 4       | 7      |
+
+  Scenario: Adding 3 numbers
+     When I press the following keys:
+     """
+       2
+     + 2
+     + 5
+       =
+     """
+     Then the result should be 9
+
+`
+
+func Benchmark_NewGherkinDOMParser(b *testing.B) { //benchmark function starts with "Benchmark" and takes a pointer to type testing.B
+	for i := 0; i < b.N; i++ { // use b.N for looping
+		gherkin.NewGherkinDOMParser(benchmarkGherkinText)
+	}
+}
+func Benchmark_NewGherkinDOMParserAndParse(b *testing.B) { //benchmark function starts with "Benchmark" and takes a pointer to type testing.B
+	for i := 0; i < b.N; i++ { // use b.N for looping
+		gp := gherkin.NewGherkinDOMParser(benchmarkGherkinText)
+		gp.Init()
+		gp.Parse()
+	}
+}
+func Benchmark_JustReParseWithCachedGherkinDOMParser(b *testing.B) { //benchmark function starts with "Benchmark" and takes a pointer to type testing.B
+	b.StopTimer()
+	gp := gherkin.NewGherkinDOMParser(benchmarkGherkinText)
+	b.StartTimer()
+	for i := 0; i < b.N; i++ { // use b.N for looping
+		gp.Init()
+		gp.Parse()
+	}
+}
+
 func TestParsingRegular(t *testing.T) {
 	verifyDeadSimpleCalculator(t, "", `
 @dead @simple
