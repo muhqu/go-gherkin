@@ -138,7 +138,10 @@ func (f *featureNode) Tags() []string {
 	return f.tags
 }
 func (f *featureNode) Background() ScenarioNode {
-	return f.background
+	if n := f.background; n != nil {
+		return n
+	}
+	return nil
 }
 func (f *featureNode) Scenarios() []ScenarioNode {
 	return f.scenarios
@@ -205,8 +208,8 @@ type stepNode struct {
 
 	stepType string
 	text     string
-	pyString PyStringNode
-	table    TableNode
+	pyString *pyStringNode
+	table    *tableNode
 }
 
 func (s *stepNode) StepType() string {
@@ -216,10 +219,16 @@ func (s *stepNode) Text() string {
 	return s.text
 }
 func (s *stepNode) PyString() PyStringNode {
-	return s.pyString
+	if p := s.pyString; p != nil {
+		return p
+	}
+	return nil
 }
 func (s *stepNode) Table() TableNode {
-	return s.table
+	if t := s.table; t != nil {
+		return t
+	}
+	return nil
 }
 
 // ----------------------------------------
@@ -270,7 +279,10 @@ type outlineExamplesNode struct {
 }
 
 func (o *outlineExamplesNode) Table() TableNode {
-	return o.table
+	if n := o.table; n != nil {
+		return n
+	}
+	return nil
 }
 
 // ----------------------------------------

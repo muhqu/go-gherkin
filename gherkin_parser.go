@@ -141,11 +141,14 @@ func (gp *gherkinPegBase) beginStep(stepType, name string) {
 }
 func (gp *gherkinPegBase) endStep() {
 	gp.log("EndStep")
-	//if gp.pyString != nil {
-	//	gp.step.pyString = gp.pyString
-	//} else if gp.table != nil {
-	//	gp.step.table = gp.table
-	//}
+	if gp.pyString != nil {
+		gp.step.pyString = gp.pyString
+		gp.pyString = nil
+	}
+	if gp.table != nil {
+		gp.step.table = gp.table
+		gp.table = nil
+	}
 	gp.emit(EndNodeEvent(gp.step))
 	gp.step = nil
 }
