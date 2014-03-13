@@ -2,15 +2,16 @@ package gherkin
 
 import (
 	"fmt"
+	"io"
 )
 
 type GherkinDOM interface {
 	Feature() FeatureNode
+	Format(f GherkinFormater) io.Reader
 }
 type GherkinDOMParser interface {
 	GherkinParser
 	GherkinDOM
-	GherkinDOMWriter
 	ParseFeature() (FeatureNode, error)
 }
 
@@ -90,18 +91,27 @@ func (g *gherkinDOMParser) ProcessNodeEvent(e NodeEvent) {
 		case BeginNodeEventType:
 			g.scenario = node
 			g.feature.background = node
+		case EndNodeEventType:
+			g.scenario = nil
+			g.table = nil
 		}
 	case *scenarioNode:
 		switch et {
 		case BeginNodeEventType:
 			g.scenario = node
 			g.feature.scenarios = append(g.feature.scenarios, node)
+		case EndNodeEventType:
+			g.scenario = nil
+			g.table = nil
 		}
 	case *outlineNode:
 		switch et {
 		case BeginNodeEventType:
 			g.scenario = node
 			g.feature.scenarios = append(g.feature.scenarios, node)
+		case EndNodeEventType:
+			g.scenario = nil
+			g.table = nil
 		}
 	case *stepNode:
 		switch et {
@@ -116,6 +126,7 @@ func (g *gherkinDOMParser) ProcessNodeEvent(e NodeEvent) {
 				g.step.table = g.table
 				g.table = nil
 			}
+			g.step = nil
 		}
 	case *tableNode:
 		g.table = node
