@@ -8,23 +8,30 @@ import (
 	"testing"
 )
 
+func prettyPrintingLogFn(logPrefix string) func(msg string, args ...interface{}) {
+	depth := 0
+	return func(msg string, args ...interface{}) {
+		isBegin := msg[0:5] == "Begin"
+		isEnd := msg[0:3] == "End"
+		if isEnd {
+			depth = depth - 1
+			if depth < 0 {
+				depth = 0
+			}
+		}
+		line := fmt.Sprintf(msg, args...)
+		depthPrefix := strings.Repeat("  ", depth)
+		fmt.Printf("%s%s%s\n", logPrefix, depthPrefix, line)
+		if isBegin {
+			depth = depth + 1
+		}
+	}
+}
+
 func parse(t *testing.T, logPrefix, text string) (gherkin.GherkinDOMParser, error) {
 	gp := gherkin.NewGherkinDOMParser(text)
 	if logPrefix != "" {
-		depth := 0
-		gp.WithLogFn(func(msg string, args ...interface{}) {
-			isBegin := msg[0:5] == "Begin"
-			isEnd := msg[0:3] == "End"
-			if isEnd {
-				depth = depth - 1
-			}
-			line := fmt.Sprintf(msg, args...)
-			depthPrefix := strings.Repeat("  ", depth)
-			fmt.Printf("%s%s%s\n", logPrefix, depthPrefix, line)
-			if isBegin {
-				depth = depth + 1
-			}
-		})
+		gp.WithLogFn(prettyPrintingLogFn(logPrefix))
 	}
 	gp.Init()
 	err := gp.Parse()
