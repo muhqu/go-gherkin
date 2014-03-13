@@ -172,8 +172,7 @@ func (gp *gherkinPegBase) endPyString() {
 
 func (gp *gherkinPegBase) beginTable() {
 	gp.log("BeginTable")
-	table := new(tableNode)
-	table.rows = [][]string{}
+	table := newTableNode()
 	gp.table = table
 	gp.emit(BeginNodeEvent(gp.table))
 }

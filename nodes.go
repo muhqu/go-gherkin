@@ -319,6 +319,12 @@ type tableNode struct {
 	rows [][]string
 }
 
+func newTableNode() *tableNode {
+	n := &tableNode{}
+	n.nodeType = TableNodeType
+	return n
+}
+
 func (t *tableNode) Rows() [][]string {
 	return t.rows
 }
