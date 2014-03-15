@@ -83,7 +83,6 @@ TableCell <-
   <( [^\r\n|]+ )> '|'
   { p.beginTableCell(); p.endTableCell(buffer[begin:end]) }
 
-
 Tags <-
   Tag* OS
 

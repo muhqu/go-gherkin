@@ -8,66 +8,66 @@ import (
 	"strconv"
 )
 
-const END_SYMBOL rune = 4
+const end_symbol rune = 4
 
 /* The rule types inferred from the grammar are below. */
-type Rule uint8
+type rule uint8
 
 const (
-	RuleUnknown Rule = iota
-	RuleBegin
-	RuleFeature
-	RuleBackground
-	RuleScenario
-	RuleOutline
-	RuleOutlineExamples
-	RuleStep
-	RuleStepArgument
-	RulePyString
-	RulePyStringQuote
-	RulePyStringLine
-	RuleTable
-	RuleTableRow
-	RuleTableCell
-	RuleTags
-	RuleTag
-	RuleStringToEndOfLine
-	RuleOS
-	RuleWS
-	RuleNL
-	RuleWSNLEOF
-	RuleMLWS
-	RulePegText
-	RuleAction0
-	RuleAction1
-	RuleAction2
-	RuleAction3
-	RuleAction4
-	RuleAction5
-	RuleAction6
-	RuleAction7
-	RuleAction8
-	RuleAction9
-	RuleAction10
-	RuleAction11
-	RuleAction12
-	RuleAction13
-	RuleAction14
-	RuleAction15
-	RuleAction16
-	RuleAction17
-	RuleAction18
-	RuleAction19
-	RuleAction20
-	RuleAction21
-	RuleAction22
+	ruleUnknown rule = iota
+	ruleBegin
+	ruleFeature
+	ruleBackground
+	ruleScenario
+	ruleOutline
+	ruleOutlineExamples
+	ruleStep
+	ruleStepArgument
+	rulePyString
+	rulePyStringQuote
+	rulePyStringLine
+	ruleTable
+	ruleTableRow
+	ruleTableCell
+	ruleTags
+	ruleTag
+	ruleStringToEndOfLine
+	ruleOS
+	ruleWS
+	ruleNL
+	ruleWSNLEOF
+	ruleMLWS
+	rulePegText
+	ruleAction0
+	ruleAction1
+	ruleAction2
+	ruleAction3
+	ruleAction4
+	ruleAction5
+	ruleAction6
+	ruleAction7
+	ruleAction8
+	ruleAction9
+	ruleAction10
+	ruleAction11
+	ruleAction12
+	ruleAction13
+	ruleAction14
+	ruleAction15
+	ruleAction16
+	ruleAction17
+	ruleAction18
+	ruleAction19
+	ruleAction20
+	ruleAction21
+	ruleAction22
 
-	RulePre_
-	Rule_In_
-	Rule_Suf
+	rulePre_
+	rule_In_
+	rule_Suf
 )
 
-var Rul3s = [...]string{
+var rul3s = [...]string{
 	"Unknown",
 	"Begin",
 	"Feature",
@@ -121,12 +121,12 @@ var Rul3s = [...]string{
 	"_Suf",
 }
 
-type TokenTree interface {
+type tokenTree interface {
 	Print()
 	PrintSyntax()
 	PrintSyntaxTree(buffer string)
-	Add(rule Rule, begin, end, next, depth int)
-	Expand(index int) TokenTree
+	Add(rule rule, begin, end, next, depth int)
+	Expand(index int) tokenTree
 	Tokens() <-chan token32
 	Error() []token32
 	trim(length int)
@@ -134,12 +134,12 @@ type TokenTree interface {
 
 /* ${@} bit structure for abstract syntax tree */
 type token16 struct {
-	Rule
+	rule
 	begin, end, next int16
 }
 
 func (t *token16) isZero() bool {
-	return t.Rule == RuleUnknown && t.begin == 0 && t.end == 0 && t.next == 0
+	return t.rule == ruleUnknown && t.begin == 0 && t.end == 0 && t.next == 0
 }
 
 func (t *token16) isParentOf(u token16) bool {
@@ -147,11 +147,11 @@ func (t *token16) isParentOf(u token16) bool {
 }
 
 func (t *token16) GetToken32() token32 {
-	return token32{Rule: t.Rule, begin: int32(t.begin), end: int32(t.end), next: int32(t.next)}
+	return token32{rule: t.rule, begin: int32(t.begin), end: int32(t.end), next: int32(t.next)}
 }
 
 func (t *token16) String() string {
-	return fmt.Sprintf("\x1B[34m%v\x1B[m %v %v %v", Rul3s[t.Rule], t.begin, t.end, t.next)
+	return fmt.Sprintf("\x1B[34m%v\x1B[m %v %v %v", rul3s[t.rule], t.begin, t.end, t.next)
 }
 
 type tokens16 struct {
@@ -176,7 +176,7 @@ func (t *tokens16) Order() [][]token16 {
 
 	depths := make([]int16, 1, math.MaxInt16)
 	for i, token := range t.tree {
-		if token.Rule == RuleUnknown {
+		if token.rule == ruleUnknown {
 			t.tree = t.tree[:i]
 			break
 		}
@@ -204,23 +204,23 @@ func (t *tokens16) Order() [][]token16 {
 	return ordered
 }
 
-type State16 struct {
+type state16 struct {
 	token16
 	depths []int16
 	leaf   bool
 }
 
-func (t *tokens16) PreOrder() (<-chan State16, [][]token16) {
-	s, ordered := make(chan State16, 6), t.Order()
+func (t *tokens16) PreOrder() (<-chan state16, [][]token16) {
+	s, ordered := make(chan state16, 6), t.Order()
 	go func() {
-		var states [8]State16
+		var states [8]state16
 		for i, _ := range states {
 			states[i].depths = make([]int16, len(ordered))
 		}
 		depths, state, depth := make([]int16, len(ordered)), 0, 1
 		write := func(t token16, leaf bool) {
 			S := states[state]
-			state, S.Rule, S.begin, S.end, S.next, S.leaf = (state+1)%8, t.Rule, t.begin, t.end, int16(depth), leaf
+			state, S.rule, S.begin, S.end, S.next, S.leaf = (state+1)%8, t.rule, t.begin, t.end, int16(depth), leaf
 			copy(S.depths, depths)
 			s <- S
 		}
@@ -236,20 +236,20 @@ func (t *tokens16) PreOrder() (<-chan State16, [][]token16) {
 					if c, j := ordered[depth][i-1], depths[depth-1]; a.isParentOf(c) &&
 						(j < 2 || !ordered[depth-1][j-2].isParentOf(c)) {
 						if c.end != b.begin {
-							write(token16{Rule: Rule_In_, begin: c.end, end: b.begin}, true)
+							write(token16{rule: rule_In_, begin: c.end, end: b.begin}, true)
 						}
 						break
 					}
 				}
 
 				if a.begin < b.begin {
-					write(token16{Rule: RulePre_, begin: a.begin, end: b.begin}, true)
+					write(token16{rule: rulePre_, begin: a.begin, end: b.begin}, true)
 				}
 				break
 			}
 
 			next := depth + 1
-			if c := ordered[next][depths[next]]; c.Rule != RuleUnknown && b.isParentOf(c) {
+			if c := ordered[next][depths[next]]; c.rule != ruleUnknown && b.isParentOf(c) {
 				write(b, false)
 				depths[depth]++
 				depth, a, b = next, b, c
@@ -260,11 +260,11 @@ func (t *tokens16) PreOrder() (<-chan State16, [][]token16) {
 			depths[depth]++
 			c, parent := ordered[depth][depths[depth]], true
 			for {
-				if c.Rule != RuleUnknown && a.isParentOf(c) {
+				if c.rule != ruleUnknown && a.isParentOf(c) {
 					b = c
 					continue depthFirstSearch
 				} else if parent && b.end != a.end {
-					write(token16{Rule: Rule_Suf, begin: b.end, end: a.end}, true)
+					write(token16{rule: rule_Suf, begin: b.end, end: a.end}, true)
 				}
 
 				depth--
@@ -290,15 +290,15 @@ func (t *tokens16) PrintSyntax() {
 		if !token.leaf {
 			fmt.Printf("%v", token.begin)
 			for i, leaf, depths := 0, int(token.next), token.depths; i < leaf; i++ {
-				fmt.Printf(" \x1B[36m%v\x1B[m", Rul3s[ordered[i][depths[i]-1].Rule])
+				fmt.Printf(" \x1B[36m%v\x1B[m", rul3s[ordered[i][depths[i]-1].rule])
 			}
-			fmt.Printf(" \x1B[36m%v\x1B[m\n", Rul3s[token.Rule])
+			fmt.Printf(" \x1B[36m%v\x1B[m\n", rul3s[token.rule])
 		} else if token.begin == token.end {
 			fmt.Printf("%v", token.begin)
 			for i, leaf, depths := 0, int(token.next), token.depths; i < leaf; i++ {
-				fmt.Printf(" \x1B[31m%v\x1B[m", Rul3s[ordered[i][depths[i]-1].Rule])
+				fmt.Printf(" \x1B[31m%v\x1B[m", rul3s[ordered[i][depths[i]-1].rule])
 			}
-			fmt.Printf(" \x1B[31m%v\x1B[m\n", Rul3s[token.Rule])
+			fmt.Printf(" \x1B[31m%v\x1B[m\n", rul3s[token.rule])
 		} else {
 			for c, end := token.begin, token.end; c < end; c++ {
 				if i := int(c); max+1 < i {
@@ -315,9 +315,9 @@ func (t *tokens16) PrintSyntax() {
 				}
 				fmt.Printf("%v", c)
 				for i, leaf, depths := 0, int(token.next), token.depths; i < leaf; i++ {
-					fmt.Printf(" \x1B[34m%v\x1B[m", Rul3s[ordered[i][depths[i]-1].Rule])
+					fmt.Printf(" \x1B[34m%v\x1B[m", rul3s[ordered[i][depths[i]-1].rule])
 				}
-				fmt.Printf(" \x1B[34m%v\x1B[m\n", Rul3s[token.Rule])
+				fmt.Printf(" \x1B[34m%v\x1B[m\n", rul3s[token.rule])
 			}
 			fmt.Printf("\n")
 		}
@@ -330,12 +330,12 @@ func (t *tokens16) PrintSyntaxTree(buffer string) {
 		for c := 0; c < int(token.next); c++ {
 			fmt.Printf(" ")
 		}
-		fmt.Printf("\x1B[34m%v\x1B[m %v\n", Rul3s[token.Rule], strconv.Quote(buffer[token.begin:token.end]))
+		fmt.Printf("\x1B[34m%v\x1B[m %v\n", rul3s[token.rule], strconv.Quote(buffer[token.begin:token.end]))
 	}
 }
 
-func (t *tokens16) Add(rule Rule, begin, end, depth, index int) {
-	t.tree[index] = token16{Rule: rule, begin: int16(begin), end: int16(end), next: int16(depth)}
+func (t *tokens16) Add(rule rule, begin, end, depth, index int) {
+	t.tree[index] = token16{rule: rule, begin: int16(begin), end: int16(end), next: int16(depth)}
 }
 
 func (t *tokens16) Tokens() <-chan token32 {
@@ -364,12 +364,12 @@ func (t *tokens16) Error() []token32 {
 
 /* ${@} bit structure for abstract syntax tree */
 type token32 struct {
-	Rule
+	rule
 	begin, end, next int32
 }
 
 func (t *token32) isZero() bool {
-	return t.Rule == RuleUnknown && t.begin == 0 && t.end == 0 && t.next == 0
+	return t.rule == ruleUnknown && t.begin == 0 && t.end == 0 && t.next == 0
 }
 
 func (t *token32) isParentOf(u token32) bool {
@@ -377,11 +377,11 @@ func (t *token32) isParentOf(u token32) bool {
 }
 
 func (t *token32) GetToken32() token32 {
-	return token32{Rule: t.Rule, begin: int32(t.begin), end: int32(t.end), next: int32(t.next)}
+	return token32{rule: t.rule, begin: int32(t.begin), end: int32(t.end), next: int32(t.next)}
 }
 
 func (t *token32) String() string {
-	return fmt.Sprintf("\x1B[34m%v\x1B[m %v %v %v", Rul3s[t.Rule], t.begin, t.end, t.next)
+	return fmt.Sprintf("\x1B[34m%v\x1B[m %v %v %v", rul3s[t.rule], t.begin, t.end, t.next)
 }
 
 type tokens32 struct {
@@ -406,7 +406,7 @@ func (t *tokens32) Order() [][]token32 {
 
 	depths := make([]int32, 1, math.MaxInt16)
 	for i, token := range t.tree {
-		if token.Rule == RuleUnknown {
+		if token.rule == ruleUnknown {
 			t.tree = t.tree[:i]
 			break
 		}
@@ -434,23 +434,23 @@ func (t *tokens32) Order() [][]token32 {
 	return ordered
 }
 
-type State32 struct {
+type state32 struct {
 	token32
 	depths []int32
 	leaf   bool
 }
 
-func (t *tokens32) PreOrder() (<-chan State32, [][]token32) {
-	s, ordered := make(chan State32, 6), t.Order()
+func (t *tokens32) PreOrder() (<-chan state32, [][]token32) {
+	s, ordered := make(chan state32, 6), t.Order()
 	go func() {
-		var states [8]State32
+		var states [8]state32
 		for i, _ := range states {
 			states[i].depths = make([]int32, len(ordered))
 		}
 		depths, state, depth := make([]int32, len(ordered)), 0, 1
 		write := func(t token32, leaf bool) {
 			S := states[state]
-			state, S.Rule, S.begin, S.end, S.next, S.leaf = (state+1)%8, t.Rule, t.begin, t.end, int32(depth), leaf
+			state, S.rule, S.begin, S.end, S.next, S.leaf = (state+1)%8, t.rule, t.begin, t.end, int32(depth), leaf
 			copy(S.depths, depths)
 			s <- S
 		}
@@ -466,20 +466,20 @@ func (t *tokens32) PreOrder() (<-chan State32, [][]token32) {
 					if c, j := ordered[depth][i-1], depths[depth-1]; a.isParentOf(c) &&
 						(j < 2 || !ordered[depth-1][j-2].isParentOf(c)) {
 						if c.end != b.begin {
-							write(token32{Rule: Rule_In_, begin: c.end, end: b.begin}, true)
+							write(token32{rule: rule_In_, begin: c.end, end: b.begin}, true)
 						}
 						break
 					}
 				}
 
 				if a.begin < b.begin {
-					write(token32{Rule: RulePre_, begin: a.begin, end: b.begin}, true)
+					write(token32{rule: rulePre_, begin: a.begin, end: b.begin}, true)
 				}
 				break
 			}
 
 			next := depth + 1
-			if c := ordered[next][depths[next]]; c.Rule != RuleUnknown && b.isParentOf(c) {
+			if c := ordered[next][depths[next]]; c.rule != ruleUnknown && b.isParentOf(c) {
 				write(b, false)
 				depths[depth]++
 				depth, a, b = next, b, c
@@ -490,11 +490,11 @@ func (t *tokens32) PreOrder() (<-chan State32, [][]token32) {
 			depths[depth]++
 			c, parent := ordered[depth][depths[depth]], true
 			for {
-				if c.Rule != RuleUnknown && a.isParentOf(c) {
+				if c.rule != ruleUnknown && a.isParentOf(c) {
 					b = c
 					continue depthFirstSearch
 				} else if parent && b.end != a.end {
-					write(token32{Rule: Rule_Suf, begin: b.end, end: a.end}, true)
+					write(token32{rule: rule_Suf, begin: b.end, end: a.end}, true)
 				}
 
 				depth--
@@ -520,15 +520,15 @@ func (t *tokens32) PrintSyntax() {
 		if !token.leaf {
 			fmt.Printf("%v", token.begin)
 			for i, leaf, depths := 0, int(token.next), token.depths; i < leaf; i++ {
-				fmt.Printf(" \x1B[36m%v\x1B[m", Rul3s[ordered[i][depths[i]-1].Rule])
+				fmt.Printf(" \x1B[36m%v\x1B[m", rul3s[ordered[i][depths[i]-1].rule])
 			}
-			fmt.Printf(" \x1B[36m%v\x1B[m\n", Rul3s[token.Rule])
+			fmt.Printf(" \x1B[36m%v\x1B[m\n", rul3s[token.rule])
 		} else if token.begin == token.end {
 			fmt.Printf("%v", token.begin)
 			for i, leaf, depths := 0, int(token.next), token.depths; i < leaf; i++ {
-				fmt.Printf(" \x1B[31m%v\x1B[m", Rul3s[ordered[i][depths[i]-1].Rule])
+				fmt.Printf(" \x1B[31m%v\x1B[m", rul3s[ordered[i][depths[i]-1].rule])
 			}
-			fmt.Printf(" \x1B[31m%v\x1B[m\n", Rul3s[token.Rule])
+			fmt.Printf(" \x1B[31m%v\x1B[m\n", rul3s[token.rule])
 		} else {
 			for c, end := token.begin, token.end; c < end; c++ {
 				if i := int(c); max+1 < i {
@@ -545,9 +545,9 @@ func (t *tokens32) PrintSyntax() {
 				}
 				fmt.Printf("%v", c)
 				for i, leaf, depths := 0, int(token.next), token.depths; i < leaf; i++ {
-					fmt.Printf(" \x1B[34m%v\x1B[m", Rul3s[ordered[i][depths[i]-1].Rule])
+					fmt.Printf(" \x1B[34m%v\x1B[m", rul3s[ordered[i][depths[i]-1].rule])
 				}
-				fmt.Printf(" \x1B[34m%v\x1B[m\n", Rul3s[token.Rule])
+				fmt.Printf(" \x1B[34m%v\x1B[m\n", rul3s[token.rule])
 			}
 			fmt.Printf("\n")
 		}
@@ -560,12 +560,12 @@ func (t *tokens32) PrintSyntaxTree(buffer string) {
 		for c := 0; c < int(token.next); c++ {
 			fmt.Printf(" ")
 		}
-		fmt.Printf("\x1B[34m%v\x1B[m %v\n", Rul3s[token.Rule], strconv.Quote(buffer[token.begin:token.end]))
+		fmt.Printf("\x1B[34m%v\x1B[m %v\n", rul3s[token.rule], strconv.Quote(buffer[token.begin:token.end]))
 	}
 }
 
-func (t *tokens32) Add(rule Rule, begin, end, depth, index int) {
-	t.tree[index] = token32{Rule: rule, begin: int32(begin), end: int32(end), next: int32(depth)}
+func (t *tokens32) Add(rule rule, begin, end, depth, index int) {
+	t.tree[index] = token32{rule: rule, begin: int32(begin), end: int32(end), next: int32(depth)}
 }
 
 func (t *tokens32) Tokens() <-chan token32 {
@@ -592,7 +592,7 @@ func (t *tokens32) Error() []token32 {
 	return tokens
 }
 
-func (t *tokens16) Expand(index int) TokenTree {
+func (t *tokens16) Expand(index int) tokenTree {
 	tree := t.tree
 	if index >= len(tree) {
 		expanded := make([]token32, 2*len(tree))
@@ -604,7 +604,7 @@ func (t *tokens16) Expand(index int) TokenTree {
 	return nil
 }
 
-func (t *tokens32) Expand(index int) TokenTree {
+func (t *tokens32) Expand(index int) tokenTree {
 	tree := t.tree
 	if index >= len(tree) {
 		expanded := make([]token32, 2*len(tree))
@@ -625,7 +625,7 @@ type gherkinPeg struct {
 	rules  [47]func() bool
 	Parse  func(rule ...int) error
 	Reset  func()
-	TokenTree
+	tokenTree
 }
 
 type textPosition struct {
@@ -664,7 +664,7 @@ type parseError struct {
 }
 
 func (e *parseError) Error() string {
-	tokens, error := e.p.TokenTree.Error(), "\n"
+	tokens, error := e.p.tokenTree.Error(), "\n"
 	positions, p := make([]int, 2*len(tokens)), 0
 	for _, token := range tokens {
 		positions[p], p = int(token.begin), p+1
@@ -674,7 +674,7 @@ func (e *parseError) Error() string {
 	for _, token := range tokens {
 		begin, end := int(token.begin), int(token.end)
 		error += fmt.Sprintf("parse error near \x1B[34m%v\x1B[m (line %v symbol %v - line %v symbol %v):\n%v\n",
-			Rul3s[token.Rule],
+			rul3s[token.rule],
 			translations[begin].line, translations[begin].symbol,
 			translations[end].line, translations[end].symbol,
 			/*strconv.Quote(*/ e.p.Buffer[begin:end] /*)*/)
@@ -684,69 +684,69 @@ func (e *parseError) Error() string {
 }
 
 func (p *gherkinPeg) PrintSyntaxTree() {
-	p.TokenTree.PrintSyntaxTree(p.Buffer)
+	p.tokenTree.PrintSyntaxTree(p.Buffer)
 }
 
 func (p *gherkinPeg) Highlighter() {
-	p.TokenTree.PrintSyntax()
+	p.tokenTree.PrintSyntax()
 }
 
 func (p *gherkinPeg) Execute() {
 	buffer, begin, end := p.Buffer, 0, 0
-	for token := range p.TokenTree.Tokens() {
-		switch token.Rule {
-		case RulePegText:
+	for token := range p.tokenTree.Tokens() {
+		switch token.rule {
+		case rulePegText:
 			begin, end = int(token.begin), int(token.end)
-		case RuleAction0:
+		case ruleAction0:
 			p.buffer2 = buffer[begin:end]
-		case RuleAction1:
+		case ruleAction1:
 			p.beginFeature(p.buffer2, buffer[begin:end], p.tagBuffer)
 			p.tagBuffer = nil
-		case RuleAction2:
+		case ruleAction2:
 			p.endFeature()
-		case RuleAction3:
+		case ruleAction3:
 			p.beginBackground(buffer[begin:end], p.tagBuffer)
 			p.tagBuffer = nil
-		case RuleAction4:
+		case ruleAction4:
 			p.endBackground()
-		case RuleAction5:
+		case ruleAction5:
 			p.beginScenario(buffer[begin:end], p.tagBuffer)
 			p.tagBuffer = nil
-		case RuleAction6:
+		case ruleAction6:
 			p.endScenario()
-		case RuleAction7:
+		case ruleAction7:
 			p.beginOutline(buffer[begin:end], p.tagBuffer)
 			p.tagBuffer = nil
-		case RuleAction8:
+		case ruleAction8:
 			p.endOutline()
-		case RuleAction9:
+		case ruleAction9:
 			p.beginOutlineExamples()
-		case RuleAction10:
+		case ruleAction10:
 			p.endOutlineExamples()
-		case RuleAction11:
+		case ruleAction11:
 			p.buffer2 = buffer[begin:end]
-		case RuleAction12:
+		case ruleAction12:
 			p.beginStep(p.buffer2, buffer[begin:end])
-		case RuleAction13:
+		case ruleAction13:
 			p.endStep()
-		case RuleAction14:
+		case ruleAction14:
 			p.beginPyString(buffer[begin:end])
-		case RuleAction15:
+		case ruleAction15:
 			p.endPyString()
-		case RuleAction16:
+		case ruleAction16:
 			p.bufferPyString(buffer[begin:end])
-		case RuleAction17:
+		case ruleAction17:
 			p.beginTable()
-		case RuleAction18:
+		case ruleAction18:
 			p.endTable()
-		case RuleAction19:
+		case ruleAction19:
 			p.beginTableRow()
-		case RuleAction20:
+		case ruleAction20:
 			p.endTableRow()
-		case RuleAction21:
+		case ruleAction21:
 			p.beginTableCell()
 			p.endTableCell(buffer[begin:end])
-		case RuleAction22:
+		case ruleAction22:
 			p.tagBuffer = append(p.tagBuffer, buffer[begin:end])
 
 		}
@@ -755,11 +755,11 @@ func (p *gherkinPeg) Execute() {
 
 func (p *gherkinPeg) Init() {
 	p.buffer = []rune(p.Buffer)
-	if len(p.buffer) == 0 || p.buffer[len(p.buffer)-1] != END_SYMBOL {
-		p.buffer = append(p.buffer, END_SYMBOL)
+	if len(p.buffer) == 0 || p.buffer[len(p.buffer)-1] != end_symbol {
+		p.buffer = append(p.buffer, end_symbol)
 	}
 
-	var tree TokenTree = &tokens16{tree: make([]token16, math.MaxInt16)}
+	var tree tokenTree = &tokens16{tree: make([]token16, math.MaxInt16)}
 	position, depth, tokenIndex, buffer, rules := 0, 0, 0, p.buffer, p.rules
 
 	p.Parse = func(rule ...int) error {
@@ -768,9 +768,9 @@ func (p *gherkinPeg) Init() {
 			r = rule[0]
 		}
 		matches := p.rules[r]()
-		p.TokenTree = tree
+		p.tokenTree = tree
 		if matches {
-			p.TokenTree.trim(tokenIndex)
+			p.tokenTree.trim(tokenIndex)
 			return nil
 		}
 		return &parseError{p}
@@ -780,7 +780,7 @@ func (p *gherkinPeg) Init() {
 		position, tokenIndex, depth = 0, 0, 0
 	}
 
-	add := func(rule Rule, begin int) {
+	add := func(rule rule, begin int) {
 		if t := tree.Expand(tokenIndex); t != nil {
 			tree = t
 		}
@@ -789,7 +789,7 @@ func (p *gherkinPeg) Init() {
 	}
 
 	matchDot := func() bool {
-		if buffer[position] != END_SYMBOL {
+		if buffer[position] != end_symbol {
 			position++
 			return true
 		}
@@ -817,7 +817,7 @@ func (p *gherkinPeg) Init() {
 					{
 						position4 := position
 						depth++
-						if !rules[RuleTags]() {
+						if !rules[ruleTags]() {
 							goto l2
 						}
 						if buffer[position] != rune('F') {
@@ -855,7 +855,7 @@ func (p *gherkinPeg) Init() {
 					l5:
 						{
 							position6, tokenIndex6, depth6 := position, tokenIndex, depth
-							if !rules[RuleWS]() {
+							if !rules[ruleWS]() {
 								goto l6
 							}
 							goto l5
@@ -865,17 +865,17 @@ func (p *gherkinPeg) Init() {
 						{
 							position7 := position
 							depth++
-							if !rules[RuleStringToEndOfLine]() {
+							if !rules[ruleStringToEndOfLine]() {
 								goto l2
 							}
 							depth--
-							add(RulePegText, position7)
+							add(rulePegText, position7)
 						}
-						if !rules[RuleWSNLEOF]() {
+						if !rules[ruleWSNLEOF]() {
 							goto l2
 						}
 						{
-							add(RuleAction0, position)
+							add(ruleAction0, position)
 						}
 						{
 							position9 := position
@@ -885,7 +885,7 @@ func (p *gherkinPeg) Init() {
 							l14:
 								{
 									position15, tokenIndex15, depth15 := position, tokenIndex, depth
-									if !rules[RuleWS]() {
+									if !rules[ruleWS]() {
 										goto l15
 									}
 									goto l14
@@ -1056,10 +1056,10 @@ func (p *gherkinPeg) Init() {
 								l16:
 									position, tokenIndex, depth = position16, tokenIndex16, depth16
 								}
-								if !rules[RuleStringToEndOfLine]() {
+								if !rules[ruleStringToEndOfLine]() {
 									goto l10
 								}
-								if !rules[RuleWSNLEOF]() {
+								if !rules[ruleWSNLEOF]() {
 									goto l10
 								}
 							l12:
@@ -1068,7 +1068,7 @@ func (p *gherkinPeg) Init() {
 								l20:
 									{
 										position21, tokenIndex21, depth21 := position, tokenIndex, depth
-										if !rules[RuleWS]() {
+										if !rules[ruleWS]() {
 											goto l21
 										}
 										goto l20
@@ -1239,10 +1239,10 @@ func (p *gherkinPeg) Init() {
 									l22:
 										position, tokenIndex, depth = position22, tokenIndex22, depth22
 									}
-									if !rules[RuleStringToEndOfLine]() {
+									if !rules[ruleStringToEndOfLine]() {
 										goto l13
 									}
-									if !rules[RuleWSNLEOF]() {
+									if !rules[ruleWSNLEOF]() {
 										goto l13
 									}
 									goto l12
@@ -1255,10 +1255,10 @@ func (p *gherkinPeg) Init() {
 							}
 						l11:
 							depth--
-							add(RulePegText, position9)
+							add(rulePegText, position9)
 						}
 						{
-							add(RuleAction1, position)
+							add(ruleAction1, position)
 						}
 					l27:
 						{
@@ -1268,7 +1268,7 @@ func (p *gherkinPeg) Init() {
 								{
 									position31 := position
 									depth++
-									if !rules[RuleTags]() {
+									if !rules[ruleTags]() {
 										goto l30
 									}
 									if buffer[position] != rune('B') {
@@ -1318,7 +1318,7 @@ func (p *gherkinPeg) Init() {
 								l32:
 									{
 										position33, tokenIndex33, depth33 := position, tokenIndex, depth
-										if !rules[RuleWS]() {
+										if !rules[ruleWS]() {
 											goto l33
 										}
 										goto l32
@@ -1330,7 +1330,7 @@ func (p *gherkinPeg) Init() {
 										depth++
 										{
 											position35, tokenIndex35, depth35 := position, tokenIndex, depth
-											if !rules[RuleStringToEndOfLine]() {
+											if !rules[ruleStringToEndOfLine]() {
 												goto l35
 											}
 											goto l36
@@ -1339,18 +1339,18 @@ func (p *gherkinPeg) Init() {
 										}
 									l36:
 										depth--
-										add(RulePegText, position34)
+										add(rulePegText, position34)
 									}
-									if !rules[RuleWSNLEOF]() {
+									if !rules[ruleWSNLEOF]() {
 										goto l30
 									}
 									{
-										add(RuleAction3, position)
+										add(ruleAction3, position)
 									}
 								l38:
 									{
 										position39, tokenIndex39, depth39 := position, tokenIndex, depth
-										if !rules[RuleStep]() {
+										if !rules[ruleStep]() {
 											goto l39
 										}
 										goto l38
@@ -1358,10 +1358,10 @@ func (p *gherkinPeg) Init() {
 										position, tokenIndex, depth = position39, tokenIndex39, depth39
 									}
 									{
-										add(RuleAction4, position)
+										add(ruleAction4, position)
 									}
 									depth--
-									add(RuleBackground, position31)
+									add(ruleBackground, position31)
 								}
 								goto l29
 							l30:
@@ -1369,7 +1369,7 @@ func (p *gherkinPeg) Init() {
 								{
 									position42 := position
 									depth++
-									if !rules[RuleTags]() {
+									if !rules[ruleTags]() {
 										goto l41
 									}
 									if buffer[position] != rune('S') {
@@ -1411,7 +1411,7 @@ func (p *gherkinPeg) Init() {
 								l43:
 									{
 										position44, tokenIndex44, depth44 := position, tokenIndex, depth
-										if !rules[RuleWS]() {
+										if !rules[ruleWS]() {
 											goto l44
 										}
 										goto l43
@@ -1423,7 +1423,7 @@ func (p *gherkinPeg) Init() {
 										depth++
 										{
 											position46, tokenIndex46, depth46 := position, tokenIndex, depth
-											if !rules[RuleStringToEndOfLine]() {
+											if !rules[ruleStringToEndOfLine]() {
 												goto l46
 											}
 											goto l47
@@ -1432,18 +1432,18 @@ func (p *gherkinPeg) Init() {
 										}
 									l47:
 										depth--
-										add(RulePegText, position45)
+										add(rulePegText, position45)
 									}
-									if !rules[RuleWSNLEOF]() {
+									if !rules[ruleWSNLEOF]() {
 										goto l41
 									}
 									{
-										add(RuleAction5, position)
+										add(ruleAction5, position)
 									}
 								l49:
 									{
 										position50, tokenIndex50, depth50 := position, tokenIndex, depth
-										if !rules[RuleStep]() {
+										if !rules[ruleStep]() {
 											goto l50
 										}
 										goto l49
@@ -1451,10 +1451,10 @@ func (p *gherkinPeg) Init() {
 										position, tokenIndex, depth = position50, tokenIndex50, depth50
 									}
 									{
-										add(RuleAction6, position)
+										add(ruleAction6, position)
 									}
 									depth--
-									add(RuleScenario, position42)
+									add(ruleScenario, position42)
 								}
 								goto l29
 							l41:
@@ -1462,7 +1462,7 @@ func (p *gherkinPeg) Init() {
 								{
 									position53 := position
 									depth++
-									if !rules[RuleTags]() {
+									if !rules[ruleTags]() {
 										goto l52
 									}
 									if buffer[position] != rune('S') {
@@ -1536,7 +1536,7 @@ func (p *gherkinPeg) Init() {
 								l54:
 									{
 										position55, tokenIndex55, depth55 := position, tokenIndex, depth
-										if !rules[RuleWS]() {
+										if !rules[ruleWS]() {
 											goto l55
 										}
 										goto l54
@@ -1548,7 +1548,7 @@ func (p *gherkinPeg) Init() {
 										depth++
 										{
 											position57, tokenIndex57, depth57 := position, tokenIndex, depth
-											if !rules[RuleStringToEndOfLine]() {
+											if !rules[ruleStringToEndOfLine]() {
 												goto l57
 											}
 											goto l58
@@ -1557,18 +1557,18 @@ func (p *gherkinPeg) Init() {
 										}
 									l58:
 										depth--
-										add(RulePegText, position56)
+										add(rulePegText, position56)
 									}
-									if !rules[RuleWSNLEOF]() {
+									if !rules[ruleWSNLEOF]() {
 										goto l52
 									}
 									{
-										add(RuleAction7, position)
+										add(ruleAction7, position)
 									}
 								l60:
 									{
 										position61, tokenIndex61, depth61 := position, tokenIndex, depth
-										if !rules[RuleStep]() {
+										if !rules[ruleStep]() {
 											goto l61
 										}
 										goto l60
@@ -1580,7 +1580,7 @@ func (p *gherkinPeg) Init() {
 										{
 											position64 := position
 											depth++
-											if !rules[RuleOS]() {
+											if !rules[ruleOS]() {
 												goto l62
 											}
 											if buffer[position] != rune('E') {
@@ -1619,15 +1619,15 @@ func (p *gherkinPeg) Init() {
 												goto l62
 											}
 											position++
-											if !rules[RuleWSNLEOF]() {
+											if !rules[ruleWSNLEOF]() {
 												goto l62
 											}
 											{
-												add(RuleAction9, position)
+												add(ruleAction9, position)
 											}
 											{
 												position66, tokenIndex66, depth66 := position, tokenIndex, depth
-												if !rules[RuleTable]() {
+												if !rules[ruleTable]() {
 													goto l66
 												}
 												goto l67
@@ -1636,10 +1636,10 @@ func (p *gherkinPeg) Init() {
 											}
 										l67:
 											{
-												add(RuleAction10, position)
+												add(ruleAction10, position)
 											}
 											depth--
-											add(RuleOutlineExamples, position64)
+											add(ruleOutlineExamples, position64)
 										}
 										goto l63
 									l62:
@@ -1647,10 +1647,10 @@ func (p *gherkinPeg) Init() {
 									}
 								l63:
 									{
-										add(RuleAction8, position)
+										add(ruleAction8, position)
 									}
 									depth--
-									add(RuleOutline, position53)
+									add(ruleOutline, position53)
 								}
 								goto l29
 							l52:
@@ -1661,14 +1661,14 @@ func (p *gherkinPeg) Init() {
 								l73:
 									{
 										position74, tokenIndex74, depth74 := position, tokenIndex, depth
-										if !rules[RuleWS]() {
+										if !rules[ruleWS]() {
 											goto l74
 										}
 										goto l73
 									l74:
 										position, tokenIndex, depth = position74, tokenIndex74, depth74
 									}
-									if !rules[RuleNL]() {
+									if !rules[ruleNL]() {
 										goto l28
 									}
 								l71:
@@ -1677,14 +1677,14 @@ func (p *gherkinPeg) Init() {
 									l75:
 										{
 											position76, tokenIndex76, depth76 := position, tokenIndex, depth
-											if !rules[RuleWS]() {
+											if !rules[ruleWS]() {
 												goto l76
 											}
 											goto l75
 										l76:
 											position, tokenIndex, depth = position76, tokenIndex76, depth76
 										}
-										if !rules[RuleNL]() {
+										if !rules[ruleNL]() {
 											goto l72
 										}
 										goto l71
@@ -1692,7 +1692,7 @@ func (p *gherkinPeg) Init() {
 										position, tokenIndex, depth = position72, tokenIndex72, depth72
 									}
 									depth--
-									add(RuleMLWS, position70)
+									add(ruleMLWS, position70)
 								}
 							}
 						l29:
@@ -1701,17 +1701,17 @@ func (p *gherkinPeg) Init() {
 							position, tokenIndex, depth = position28, tokenIndex28, depth28
 						}
 						{
-							add(RuleAction2, position)
+							add(ruleAction2, position)
 						}
 						depth--
-						add(RuleFeature, position4)
+						add(ruleFeature, position4)
 					}
 					goto l3
 				l2:
 					position, tokenIndex, depth = position2, tokenIndex2, depth2
 				}
 			l3:
-				if !rules[RuleOS]() {
+				if !rules[ruleOS]() {
 					goto l0
 				}
 				{
@@ -1724,7 +1724,7 @@ func (p *gherkinPeg) Init() {
 					position, tokenIndex, depth = position78, tokenIndex78, depth78
 				}
 				depth--
-				add(RuleBegin, position1)
+				add(ruleBegin, position1)
 			}
 			return true
 		l0:
@@ -1747,7 +1747,7 @@ func (p *gherkinPeg) Init() {
 			{
 				position85 := position
 				depth++
-				if !rules[RuleTags]() {
+				if !rules[ruleTags]() {
 					goto l84
 				}
 				{
@@ -1855,15 +1855,15 @@ func (p *gherkinPeg) Init() {
 					}
 
 					depth--
-					add(RulePegText, position86)
+					add(rulePegText, position86)
 				}
 				{
-					add(RuleAction11, position)
+					add(ruleAction11, position)
 				}
 			l89:
 				{
 					position90, tokenIndex90, depth90 := position, tokenIndex, depth
-					if !rules[RuleWS]() {
+					if !rules[ruleWS]() {
 						goto l90
 					}
 					goto l89
@@ -1873,17 +1873,17 @@ func (p *gherkinPeg) Init() {
 				{
 					position91 := position
 					depth++
-					if !rules[RuleStringToEndOfLine]() {
+					if !rules[ruleStringToEndOfLine]() {
 						goto l84
 					}
 					depth--
-					add(RulePegText, position91)
+					add(rulePegText, position91)
 				}
-				if !rules[RuleWSNLEOF]() {
+				if !rules[ruleWSNLEOF]() {
 					goto l84
 				}
 				{
-					add(RuleAction12, position)
+					add(ruleAction12, position)
 				}
 				{
 					position93, tokenIndex93, depth93 := position, tokenIndex, depth
@@ -1892,7 +1892,7 @@ func (p *gherkinPeg) Init() {
 						depth++
 						{
 							position96, tokenIndex96, depth96 := position, tokenIndex, depth
-							if !rules[RuleTable]() {
+							if !rules[ruleTable]() {
 								goto l97
 							}
 							goto l96
@@ -1907,14 +1907,14 @@ func (p *gherkinPeg) Init() {
 								l101:
 									{
 										position102, tokenIndex102, depth102 := position, tokenIndex, depth
-										if !rules[RuleWS]() {
+										if !rules[ruleWS]() {
 											goto l102
 										}
 										goto l101
 									l102:
 										position, tokenIndex, depth = position102, tokenIndex102, depth102
 									}
-									if !rules[RuleNL]() {
+									if !rules[ruleNL]() {
 										goto l100
 									}
 									goto l99
@@ -1927,7 +1927,7 @@ func (p *gherkinPeg) Init() {
 								l104:
 									{
 										position105, tokenIndex105, depth105 := position, tokenIndex, depth
-										if !rules[RuleWS]() {
+										if !rules[ruleWS]() {
 											goto l105
 										}
 										goto l104
@@ -1935,16 +1935,16 @@ func (p *gherkinPeg) Init() {
 										position, tokenIndex, depth = position105, tokenIndex105, depth105
 									}
 									depth--
-									add(RulePegText, position103)
+									add(rulePegText, position103)
 								}
-								if !rules[RulePyStringQuote]() {
+								if !rules[rulePyStringQuote]() {
 									goto l93
 								}
-								if !rules[RuleNL]() {
+								if !rules[ruleNL]() {
 									goto l93
 								}
 								{
-									add(RuleAction14, position)
+									add(ruleAction14, position)
 								}
 							l107:
 								{
@@ -1954,14 +1954,14 @@ func (p *gherkinPeg) Init() {
 									l110:
 										{
 											position111, tokenIndex111, depth111 := position, tokenIndex, depth
-											if !rules[RuleWS]() {
+											if !rules[ruleWS]() {
 												goto l111
 											}
 											goto l110
 										l111:
 											position, tokenIndex, depth = position111, tokenIndex111, depth111
 										}
-										if !rules[RulePyStringQuote]() {
+										if !rules[rulePyStringQuote]() {
 											goto l109
 										}
 										goto l108
@@ -1974,20 +1974,20 @@ func (p *gherkinPeg) Init() {
 										{
 											position113 := position
 											depth++
-											if !rules[RuleStringToEndOfLine]() {
+											if !rules[ruleStringToEndOfLine]() {
 												goto l108
 											}
-											if !rules[RuleNL]() {
+											if !rules[ruleNL]() {
 												goto l108
 											}
 											depth--
-											add(RulePegText, position113)
+											add(rulePegText, position113)
 										}
 										{
-											add(RuleAction16, position)
+											add(ruleAction16, position)
 										}
 										depth--
-										add(RulePyStringLine, position112)
+										add(rulePyStringLine, position112)
 									}
 									goto l107
 								l108:
@@ -1996,29 +1996,29 @@ func (p *gherkinPeg) Init() {
 							l115:
 								{
 									position116, tokenIndex116, depth116 := position, tokenIndex, depth
-									if !rules[RuleWS]() {
+									if !rules[ruleWS]() {
 										goto l116
 									}
 									goto l115
 								l116:
 									position, tokenIndex, depth = position116, tokenIndex116, depth116
 								}
-								if !rules[RulePyStringQuote]() {
+								if !rules[rulePyStringQuote]() {
 									goto l93
 								}
-								if !rules[RuleWSNLEOF]() {
+								if !rules[ruleWSNLEOF]() {
 									goto l93
 								}
 								{
-									add(RuleAction15, position)
+									add(ruleAction15, position)
 								}
 								depth--
-								add(RulePyString, position98)
+								add(rulePyString, position98)
 							}
 						}
 					l96:
 						depth--
-						add(RuleStepArgument, position95)
+						add(ruleStepArgument, position95)
 					}
 					goto l94
 				l93:
@@ -2026,10 +2026,10 @@ func (p *gherkinPeg) Init() {
 				}
 			l94:
 				{
-					add(RuleAction13, position)
+					add(ruleAction13, position)
 				}
 				depth--
-				add(RuleStep, position85)
+				add(ruleStep, position85)
 			}
 			return true
 		l84:
@@ -2059,7 +2059,7 @@ func (p *gherkinPeg) Init() {
 				}
 				position++
 				depth--
-				add(RulePyStringQuote, position122)
+				add(rulePyStringQuote, position122)
 			}
 			return true
 		l121:
@@ -2075,15 +2075,15 @@ func (p *gherkinPeg) Init() {
 				position125 := position
 				depth++
 				{
-					add(RuleAction17, position)
+					add(ruleAction17, position)
 				}
 				{
 					position129 := position
 					depth++
 					{
-						add(RuleAction19, position)
+						add(ruleAction19, position)
 					}
-					if !rules[RuleOS]() {
+					if !rules[ruleOS]() {
 						goto l124
 					}
 					if buffer[position] != rune('|') {
@@ -2168,17 +2168,17 @@ func (p *gherkinPeg) Init() {
 								position, tokenIndex, depth = position136, tokenIndex136, depth136
 							}
 							depth--
-							add(RulePegText, position134)
+							add(rulePegText, position134)
 						}
 						if buffer[position] != rune('|') {
 							goto l124
 						}
 						position++
 						{
-							add(RuleAction21, position)
+							add(ruleAction21, position)
 						}
 						depth--
-						add(RuleTableCell, position133)
+						add(ruleTableCell, position133)
 					}
 				l131:
 					{
@@ -2261,30 +2261,30 @@ func (p *gherkinPeg) Init() {
 									position, tokenIndex, depth = position145, tokenIndex145, depth145
 								}
 								depth--
-								add(RulePegText, position143)
+								add(rulePegText, position143)
 							}
 							if buffer[position] != rune('|') {
 								goto l132
 							}
 							position++
 							{
-								add(RuleAction21, position)
+								add(ruleAction21, position)
 							}
 							depth--
-							add(RuleTableCell, position142)
+							add(ruleTableCell, position142)
 						}
 						goto l131
 					l132:
 						position, tokenIndex, depth = position132, tokenIndex132, depth132
 					}
-					if !rules[RuleWSNLEOF]() {
+					if !rules[ruleWSNLEOF]() {
 						goto l124
 					}
 					{
-						add(RuleAction20, position)
+						add(ruleAction20, position)
 					}
 					depth--
-					add(RuleTableRow, position129)
+					add(ruleTableRow, position129)
 				}
 			l127:
 				{
@@ -2293,9 +2293,9 @@ func (p *gherkinPeg) Init() {
 						position152 := position
 						depth++
 						{
-							add(RuleAction19, position)
+							add(ruleAction19, position)
 						}
-						if !rules[RuleOS]() {
+						if !rules[ruleOS]() {
 							goto l128
 						}
 						if buffer[position] != rune('|') {
@@ -2380,17 +2380,17 @@ func (p *gherkinPeg) Init() {
 									position, tokenIndex, depth = position159, tokenIndex159, depth159
 								}
 								depth--
-								add(RulePegText, position157)
+								add(rulePegText, position157)
 							}
 							if buffer[position] != rune('|') {
 								goto l128
 							}
 							position++
 							{
-								add(RuleAction21, position)
+								add(ruleAction21, position)
 							}
 							depth--
-							add(RuleTableCell, position156)
+							add(ruleTableCell, position156)
 						}
 					l154:
 						{
@@ -2473,40 +2473,40 @@ func (p *gherkinPeg) Init() {
 										position, tokenIndex, depth = position168, tokenIndex168, depth168
 									}
 									depth--
-									add(RulePegText, position166)
+									add(rulePegText, position166)
 								}
 								if buffer[position] != rune('|') {
 									goto l155
 								}
 								position++
 								{
-									add(RuleAction21, position)
+									add(ruleAction21, position)
 								}
 								depth--
-								add(RuleTableCell, position165)
+								add(ruleTableCell, position165)
 							}
 							goto l154
 						l155:
 							position, tokenIndex, depth = position155, tokenIndex155, depth155
 						}
-						if !rules[RuleWSNLEOF]() {
+						if !rules[ruleWSNLEOF]() {
 							goto l128
 						}
 						{
-							add(RuleAction20, position)
+							add(ruleAction20, position)
 						}
 						depth--
-						add(RuleTableRow, position152)
+						add(ruleTableRow, position152)
 					}
 					goto l127
 				l128:
 					position, tokenIndex, depth = position128, tokenIndex128, depth128
 				}
 				{
-					add(RuleAction18, position)
+					add(ruleAction18, position)
 				}
 				depth--
-				add(RuleTable, position125)
+				add(ruleTable, position125)
 			}
 			return true
 		l124:
@@ -2529,7 +2529,7 @@ func (p *gherkinPeg) Init() {
 					{
 						position182 := position
 						depth++
-						if !rules[RuleOS]() {
+						if !rules[ruleOS]() {
 							goto l181
 						}
 						if buffer[position] != rune('@') {
@@ -2623,23 +2623,23 @@ func (p *gherkinPeg) Init() {
 								position, tokenIndex, depth = position185, tokenIndex185, depth185
 							}
 							depth--
-							add(RulePegText, position183)
+							add(rulePegText, position183)
 						}
 						{
-							add(RuleAction22, position)
+							add(ruleAction22, position)
 						}
 						depth--
-						add(RuleTag, position182)
+						add(ruleTag, position182)
 					}
 					goto l180
 				l181:
 					position, tokenIndex, depth = position181, tokenIndex181, depth181
 				}
-				if !rules[RuleOS]() {
+				if !rules[ruleOS]() {
 					goto l178
 				}
 				depth--
-				add(RuleTags, position179)
+				add(ruleTags, position179)
 			}
 			return true
 		l178:
@@ -2688,7 +2688,7 @@ func (p *gherkinPeg) Init() {
 					position, tokenIndex, depth = position195, tokenIndex195, depth195
 				}
 				depth--
-				add(RuleStringToEndOfLine, position193)
+				add(ruleStringToEndOfLine, position193)
 			}
 			return true
 		l192:
@@ -2705,13 +2705,13 @@ func (p *gherkinPeg) Init() {
 					position201, tokenIndex201, depth201 := position, tokenIndex, depth
 					{
 						position202, tokenIndex202, depth202 := position, tokenIndex, depth
-						if !rules[RuleNL]() {
+						if !rules[ruleNL]() {
 							goto l203
 						}
 						goto l202
 					l203:
 						position, tokenIndex, depth = position202, tokenIndex202, depth202
-						if !rules[RuleWS]() {
+						if !rules[ruleWS]() {
 							goto l201
 						}
 					}
@@ -2721,7 +2721,7 @@ func (p *gherkinPeg) Init() {
 					position, tokenIndex, depth = position201, tokenIndex201, depth201
 				}
 				depth--
-				add(RuleOS, position199)
+				add(ruleOS, position199)
 			}
 			return true
 		},
@@ -2747,7 +2747,7 @@ func (p *gherkinPeg) Init() {
 				}
 			l206:
 				depth--
-				add(RuleWS, position205)
+				add(ruleWS, position205)
 			}
 			return true
 		l204:
@@ -2787,7 +2787,7 @@ func (p *gherkinPeg) Init() {
 				}
 			l210:
 				depth--
-				add(RuleNL, position209)
+				add(ruleNL, position209)
 			}
 			return true
 		l208:
@@ -2803,7 +2803,7 @@ func (p *gherkinPeg) Init() {
 			l215:
 				{
 					position216, tokenIndex216, depth216 := position, tokenIndex, depth
-					if !rules[RuleWS]() {
+					if !rules[ruleWS]() {
 						goto l216
 					}
 					goto l215
@@ -2812,7 +2812,7 @@ func (p *gherkinPeg) Init() {
 				}
 				{
 					position217, tokenIndex217, depth217 := position, tokenIndex, depth
-					if !rules[RuleNL]() {
+					if !rules[ruleNL]() {
 						goto l218
 					}
 					goto l217
@@ -2830,7 +2830,7 @@ func (p *gherkinPeg) Init() {
 				}
 			l217:
 				depth--
-				add(RuleWSNLEOF, position214)
+				add(ruleWSNLEOF, position214)
 			}
 			return true
 		l213:
