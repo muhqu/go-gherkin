@@ -10,11 +10,11 @@ import (
 )
 
 type GherkinFormater interface {
-	FormatGherkin(GherkinDOM) io.Reader
+	Format(GherkinDOM) io.Reader
 }
 
 func (g *gherkinDOMParser) Format(f GherkinFormater) io.Reader {
-	return f.FormatGherkin(g)
+	return f.Format(g)
 }
 
 // -------------------
@@ -28,7 +28,7 @@ type gherkinPrettyPrinter struct {
 	io.Writer
 }
 
-func (gpf *GherkinPrettyFormater) FormatGherkin(gd GherkinDOM) io.Reader {
+func (gpf *GherkinPrettyFormater) Format(gd GherkinDOM) io.Reader {
 	sw := new(bytes.Buffer)
 	g := &gherkinPrettyPrinter{
 		gpf:    gpf,
@@ -42,12 +42,39 @@ func (g *gherkinPrettyPrinter) write(s string) {
 	io.WriteString(g.Writer, s)
 }
 
+type AnsiStyle string
+
+const (
+	BOLD         AnsiStyle = "1"
+	WHITE                  = "29"
+	BLACK                  = "30"
+	RED                    = "31"
+	GREEN                  = "32"
+	YELLOW                 = "33"
+	BLUE                   = "34"
+	MAGENTA                = "35"
+	CYAN                   = "36"
+	BOLD_RED               = "31;1"
+	BOLD_GREEN             = "32;1"
+	BOLD_YELLOW            = "33;1"
+	BOLD_BLUE              = "34;1"
+	BOLD_MAGENTA           = "35;1"
+	BOLD_CYAN              = "36;1"
+)
+
+func (g *gherkinPrettyPrinter) colored(color AnsiStyle, str string) string {
+	if g.gpf.AnsiColors {
+		return fmt.Sprintf("\x1B[%sm%s\x1B[m", color, str)
+	}
+	return str
+}
+
 func (g *gherkinPrettyPrinter) FormatFeature(node FeatureNode) {
 	tags := node.Tags()
 	if len(tags) > 0 {
-		g.write(fmtTags(tags) + "\n")
+		g.write(g.colored(CYAN, fmtTags(tags)) + "\n")
 	}
-	g.write(fmt.Sprintf("%s: %s\n", node.NodeType().String(), node.Title()))
+	g.write(fmt.Sprintf("%s: %s\n", g.colored(BOLD, node.NodeType().String()), node.Title()))
 	if node.Description() != "" {
 		g.write(prefixLines("  ", node.Description()) + "\n")
 	}
@@ -67,30 +94,30 @@ func (g *gherkinPrettyPrinter) FormatFeature(node FeatureNode) {
 func (g *gherkinPrettyPrinter) FormatScenario(node ScenarioNode) {
 	tags := node.Tags()
 	if len(tags) > 0 {
-		g.write("  " + fmtTags(tags) + "\n")
+		g.write("  " + g.colored(CYAN, fmtTags(tags)) + "\n")
 	}
 	switch node.NodeType() {
 	case BackgroundNodeType:
-		g.write(fmt.Sprintf("  %s:\n", "Background"))
+		g.write(fmt.Sprintf("  %s\n", g.colored(BOLD, "Background:")))
 	case ScenarioNodeType:
-		g.write(fmt.Sprintf("  %s: %s\n", "Scenario", node.Title()))
+		g.write(fmt.Sprintf("  %s %s\n", g.colored(BOLD, "Scenario:"), g.colored(WHITE, node.Title())))
 	case OutlineNodeType:
-		g.write(fmt.Sprintf("  %s: %s\n", "Scenario Outline", node.Title()))
+		g.write(fmt.Sprintf("  %s %s\n", g.colored(BOLD, "Scenario Outline:"), g.colored(WHITE, node.Title())))
 	}
 	for _, step := range node.Steps() {
 		g.FormatStep(step)
 	}
 	if node.NodeType() == OutlineNodeType {
-		g.write("\n    Examples:\n")
+		g.write(g.colored(WHITE, "\n    Examples:\n"))
 		g.FormatTable(node.(OutlineNode).Examples().Table())
 	}
 }
 
 func (g *gherkinPrettyPrinter) FormatStep(node StepNode) {
 	if g.gpf.CenterSteps {
-		g.write(fmt.Sprintf("%9s %s\n", node.StepType(), node.Text()))
+		g.write(g.colored(BOLD_GREEN, fmt.Sprintf("%9s", node.StepType())) + g.colored(GREEN, fmt.Sprintf(" %s\n", node.Text())))
 	} else {
-		g.write(fmt.Sprintf("    %s %s\n", node.StepType(), node.Text()))
+		g.write(fmt.Sprintf("    %s %s\n", g.colored(BOLD_GREEN, node.StepType()), g.colored(GREEN, node.Text())))
 	}
 
 	if node.PyString() != nil {
@@ -113,27 +140,29 @@ func (g *gherkinPrettyPrinter) FormatTable(node TableNode) {
 			}
 		}
 	}
+	wood := g.colored(BOLD_YELLOW, "|")
 	for _, row := range rows {
 		g.write("      ")
 		for c, str := range row {
 			_, err := strconv.ParseFloat(str, 64)
 			var fmtStr string
 			if err != nil {
-				fmtStr = fmt.Sprintf("| %%-%ds ", cellwidth[c])
+				fmtStr = g.colored(YELLOW, fmt.Sprintf(" %%-%ds ", cellwidth[c]))
 			} else {
-				fmtStr = fmt.Sprintf("| %%%ds ", cellwidth[c])
+				fmtStr = g.colored(YELLOW, fmt.Sprintf(" %%%ds ", cellwidth[c]))
 			}
-			g.write(fmt.Sprintf(fmtStr, str))
+			g.write(wood + fmt.Sprintf(fmtStr, str))
 		}
-		g.write("|\n")
+		g.write(wood + "\n")
 	}
 }
 
 func (g *gherkinPrettyPrinter) FormatPyString(node PyStringNode) {
 	prefix := "      "
-	g.write(prefix + "\"\"\"\n")
-	g.write(prefixLines(prefix, node.String()))
-	g.write("\"\"\"\n")
+	quotes := g.colored(BOLD, "\"\"\"")
+	g.write(prefix + quotes + "\n")
+	g.write(g.colored(YELLOW, prefixLines(prefix, node.String())))
+	g.write(quotes + "\n")
 }
 
 func prefixLines(prefix, str string) string {
