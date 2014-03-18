@@ -85,7 +85,7 @@ TableCell <-
   { p.beginTableCell(); p.endTableCell(buffer[begin:end]) }
 
 Tags <-
-  (Tag+ WS* LineEnd)* OS
+  (Tag+ WS* LineEnd?)* OS
 
 Tag <-
   OS '@' <( Word )>{{[]buftags}}
