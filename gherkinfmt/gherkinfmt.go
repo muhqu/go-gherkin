@@ -35,6 +35,7 @@ var colors bool
 var colorsYes bool
 var colorsNo bool
 var centerSteps bool
+var verbose bool
 var inputPath string
 var inputReader io.Reader
 var outputPath string
@@ -49,6 +50,7 @@ func initFlags() {
   -[no]color             explicitly enable/disable colors
   -in PATH               path to input file, defaults to stdin
   -out PATH              path to output file, defaults to stdout
+  -v                     more verbose error messages
 
 Examples:
   
@@ -61,6 +63,7 @@ Examples:
 	flag.BoolVar(&colorsYes, "color", false, "explicitly enable colors")
 	flag.BoolVar(&colorsNo, "nocolor", false, "explicitly disable colors")
 	flag.BoolVar(&centerSteps, "centersteps", false, "formating option, to control step alignment")
+	flag.BoolVar(&verbose, "v", false, "more verbose error messages")
 	flag.StringVar(&inputPath, "in", "", "path to input file")
 	flag.StringVar(&outputPath, "out", "", "path to output file")
 	flag.Parse()
@@ -68,6 +71,14 @@ Examples:
 
 func usageErr(err error) {
 	fmt.Fprintf(os.Stderr, "Error: %s\n       Use -h for help.\n", err.Error())
+}
+
+func usageErrWithVerboseHint(err error) {
+	if verbose {
+		usageErr(err)
+	} else {
+		fmt.Fprintf(os.Stderr, "Error: %s\n       Use -h for help or use -v to increase verbosity\n", err.Error())
+	}
 }
 
 func main() {
@@ -123,7 +134,10 @@ func main() {
 	gp.Init()
 	err = gp.Parse()
 	if err != nil {
-		usageErr(fmt.Errorf("Parsing failed. invalid gherkin"))
+		usageErrWithVerboseHint(fmt.Errorf("Parsing failed. invalid gherkin"))
+		if verbose {
+			fmt.Fprintln(os.Stderr, err)
+		}
 		return
 	}
 	io.Copy(outputWriter, formater.Format(gp))
