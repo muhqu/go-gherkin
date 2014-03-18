@@ -1,6 +1,6 @@
-@dead @simple Feature: Dead Simple Calculator
-Bla Bla
-Bla
+@dead @simple Feature: Dead Simple Calculator # feature comment
+Bla Bla # feature desc comment 1
+Bla # feature desc comment 2
 Background:
 Given a Simple Calculator
 @wip Scenario: Adding 2 numbers
@@ -15,7 +15,7 @@ And I press the key "<operator>"
 And I press the key "<right>"
 And I press the key "="
 Then the result should be "<result>"
-Examples:
+#Examples: # Examples comment
 | left | operator | right | result |
 | 2 | + | 2 | 4 |
 | 3 | + | 4 | 7 |
