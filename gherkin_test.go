@@ -351,3 +351,88 @@ Feature: Dead Simple Calculator
 `)
 	assert.Error(t, err)
 }
+
+func TestParsingSimpleComments(t *testing.T) {
+	gp := mustDomParse(t, "", `
+Feature: Hello World                             # feature comment
+
+  Scenario: Nice people                          # scenario 1 comment
+    Given a nice person called "Bob"             # step 1.1 comment
+      And a nice person called "Lisa"            # step 1.2 comment
+     When "Bob" says to "Lisa": "Hello!"         # step 1.3 comment
+     Then "Lisa" should reply to "Bob": "Hello!" # step 1.4 comment`)
+	feature := gp.Feature()
+	if ok := assert.NotNil(t, feature); !ok {
+		return
+	}
+	assert.Equal(t, "Hello World", feature.Title())
+
+	if ok := assert.Equal(t, 1, len(feature.Scenarios()), "Number of Scenarios"); !ok {
+		return
+	}
+
+	scenario1 := feature.Scenarios()[0]
+	if ok := assert.NotNil(t, scenario1); !ok {
+		return
+	}
+	assert.Equal(t, gherkin.ScenarioNodeType, scenario1.NodeType())
+	assert.Equal(t, 4, len(scenario1.Steps()), "Number of steps in Scenario 1")
+	i := 0
+	assert.Equal(t, "Given", scenario1.Steps()[i].StepType())
+	assert.Equal(t, `a nice person called "Bob"`, scenario1.Steps()[i].Text())
+	i += 1
+	assert.Equal(t, "And", scenario1.Steps()[i].StepType())
+	assert.Equal(t, `a nice person called "Lisa"`, scenario1.Steps()[i].Text())
+	i += 1
+	assert.Equal(t, "When", scenario1.Steps()[i].StepType())
+	assert.Equal(t, `"Bob" says to "Lisa": "Hello!"`, scenario1.Steps()[i].Text())
+	i += 1
+	assert.Equal(t, "Then", scenario1.Steps()[i].StepType())
+	assert.Equal(t, `"Lisa" should reply to "Bob": "Hello!"`, scenario1.Steps()[i].Text())
+}
+
+func TestParsingDifficultComments(t *testing.T) {
+	gp := mustDomParse(t, "", `
+@awesome @dude                                           # feature tag comment
+Feature: Hello "#World"                                  # feature comment
+  Bla bla                                                # feature description comment
+  Bla                                                    # feature description comment
+                                                         # blank line comment
+  @wip @wop                                              # scenario tag comment
+  Scenario: Nice people                                  # scenario 1 comment
+    Given a nice person called "#Bob"                    # step 1.1 comment
+      And a nice person called "Lisa#\"Bang"             # step 1.2 comment
+     When "#Bob" says to "Lisa#\"Bang": "Hello!"         # step 1.3 comment
+     Then "Lisa#\"Bang" should reply to "#Bob": "Hello!" # step 1.4 comment
+                                                         # blank line comment
+`)
+	feature := gp.Feature()
+	if ok := assert.NotNil(t, feature); !ok {
+		return
+	}
+	assert.Equal(t, `Hello "#World"`, feature.Title())
+	assert.Equal(t, "Bla bla\nBla", feature.Description())
+
+	if ok := assert.Equal(t, 1, len(feature.Scenarios()), "Number of Scenarios"); !ok {
+		return
+	}
+
+	scenario1 := feature.Scenarios()[0]
+	if ok := assert.NotNil(t, scenario1); !ok {
+		return
+	}
+	assert.Equal(t, gherkin.ScenarioNodeType, scenario1.NodeType())
+	assert.Equal(t, 4, len(scenario1.Steps()), "Number of steps in Scenario 1")
+	i := 0
+	assert.Equal(t, "Given", scenario1.Steps()[i].StepType())
+	assert.Equal(t, `a nice person called "#Bob"`, scenario1.Steps()[i].Text())
+	i += 1
+	assert.Equal(t, "And", scenario1.Steps()[i].StepType())
+	assert.Equal(t, `a nice person called "Lisa#\"Bang"`, scenario1.Steps()[i].Text())
+	i += 1
+	assert.Equal(t, "When", scenario1.Steps()[i].StepType())
+	assert.Equal(t, `"#Bob" says to "Lisa#\"Bang": "Hello!"`, scenario1.Steps()[i].Text())
+	i += 1
+	assert.Equal(t, "Then", scenario1.Steps()[i].StepType())
+	assert.Equal(t, `"Lisa#\"Bang" should reply to "#Bob": "Hello!"`, scenario1.Steps()[i].Text())
+}

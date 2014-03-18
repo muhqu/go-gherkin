@@ -13,11 +13,25 @@ get-deps:
 	go get github.com/stretchr/testify/assert
 
 gherkin.peg.go: gherkin.peg
-	$(peg) -switch -inline gherkin.peg
+	
+	# pre-process peg file
+	cat gherkin.peg | sed \
+	  -e 's/{{++\([^}]*\)}}/{ p.\1 = p.\1 + buffer[begin:end] }/g' \
+	  -e 's/{{\[\]\([^}]*\)}}/{ p.\1 = append(p.\1, buffer[begin:end]) }/g' \
+	  -e 's/{{\([^}]*\)}}/{ p.\1 = buffer[begin:end] }/g' \
+	  > gherkin.peg.pp
+
+	$(peg) -switch -inline gherkin.peg.pp
+
 	# dirty way to not export PEG specific types, constants or variables
-	cat $@ | sed -e 's/State/state/g;s/TokenTree/tokenTree/g;s/Rul3s/rul3s/g;s/Rule/rule/g;s/END_SYMBOL/end_symbol/;' > $@.tmp
-	rm $@
-	mv $@.tmp $@
+	cat gherkin.peg.pp.go | sed \
+	  -e 's/State/state/g' \
+	  -e 's/TokenTree/tokenTree/g' \
+	  -e 's/Rul3s/rul3s/g' \
+	  -e 's/Rule/rule/g' \
+	  -e 's/END_SYMBOL/end_symbol/' \
+	  > $@
+	rm gherkin.peg.pp gherkin.peg.pp.go
 
 test: gherkin.peg.go
 	go test

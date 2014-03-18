@@ -3,8 +3,11 @@ package gherkin
 type gherkinPeg Peg {
   gherkinPegBase
 
-  buffer2 string
-  tagBuffer []string
+  buf1 string
+  buf2 string
+  buf3 string
+  buftags []string
+  bufcmt string
 }
 
 Begin <- 
@@ -12,43 +15,41 @@ Begin <-
   OS !.
 
 Feature <- 
-  Tags 'Feature:' WS* <StringToEndOfLine> WSNLEOF
-  { p.buffer2 = buffer[begin:end] } 
-  <( (WS* !('Background:' / 'Scenario:' / 'Scenario Outline:') StringToEndOfLine WSNLEOF)+ )?>
-  { p.beginFeature(p.buffer2, buffer[begin:end], p.tagBuffer); p.tagBuffer = nil } 
-  ( Background / Scenario / Outline / MLWS )*
+  Tags 'Feature:' WS* <UntilLineEnd?>{{buf1}} <>{{buf2}} LineEnd
+  ( (WS* !('Background:' / 'Scenario:' / 'Scenario Outline:') <UntilLineEnd>{{++buf2}} LineEnd {p.buf2 = p.buf2 + "\n" })+ )?
+  { p.beginFeature(trimWS(p.buf1), trimWSML(p.buf2), p.buftags); p.buftags = nil } 
+  ( Background / Scenario / Outline / BlankLine )*
   { p.endFeature() }
 
 Background <- 
-  Tags 'Background:' WS* <StringToEndOfLine?> WSNLEOF
-  { p.beginBackground(buffer[begin:end], p.tagBuffer); p.tagBuffer = nil } 
+  Tags 'Background:' WS* <UntilLineEnd?>{{buf1}} LineEnd
+  { p.beginBackground(p.buf1, p.buftags); p.buftags = nil }
   Step*
   { p.endBackground() } 
 
 Scenario <- 
-  Tags 'Scenario:' WS* <StringToEndOfLine?> WSNLEOF
-  { p.beginScenario(buffer[begin:end], p.tagBuffer); p.tagBuffer = nil } 
+  Tags 'Scenario:' WS* <UntilLineEnd?>{{buf1}} LineEnd
+  { p.beginScenario(p.buf1, p.buftags); p.buftags = nil }
   Step* 
   { p.endScenario() }
 
 Outline <- 
-  Tags 'Scenario Outline:' WS* <StringToEndOfLine?> WSNLEOF
-  { p.beginOutline(buffer[begin:end], p.tagBuffer); p.tagBuffer = nil } 
+  Tags 'Scenario Outline:' WS* <UntilLineEnd?>{{buf1}} LineEnd
+  { p.beginOutline(p.buf1, p.buftags); p.buftags = nil } 
   Step*
   OutlineExamples?
   { p.endOutline() } 
 
 OutlineExamples <-
-  OS 'Examples:' WSNLEOF
+  OS 'Examples:' LineEnd
   { p.beginOutlineExamples() } 
   Table?
   { p.endOutlineExamples() } 
 
 Step <- 
-  Tags <('Given' / 'When' / 'Then' / 'And' / 'Or' / 'But')> 
-  { p.buffer2 = buffer[begin:end] }
-  WS* <StringToEndOfLine> WSNLEOF
-  { p.beginStep(p.buffer2, buffer[begin:end]) } 
+  Tags <('Given' / 'When' / 'Then' / 'And' / 'Or' / 'But')>{{buf1}}
+  WS* <UntilLineEnd>{{buf2}} LineEnd
+  { p.beginStep(p.buf1, p.buf2) } 
   StepArgument?
   { p.endStep() }
 
@@ -60,13 +61,13 @@ PyString <-
   (WS* NL)* <WS*> PyStringQuote NL
   { p.beginPyString(buffer[begin:end]) }
   (!(WS* PyStringQuote) PyStringLine)*
-  WS* PyStringQuote WSNLEOF
+  WS* PyStringQuote LineEnd
   { p.endPyString() }
 
 PyStringQuote <- '\"' '\"' '\"'
 
 PyStringLine <-
-  < StringToEndOfLine NL >
+  < UntilNL NL >
   { p.bufferPyString(buffer[begin:end]) }
 
 Table <-
@@ -76,7 +77,7 @@ Table <-
 
 TableRow <-
   { p.beginTableRow() }
-  OS '|' TableCell+ WSNLEOF
+  OS '|' TableCell+ LineEnd
   { p.endTableRow() }
 
 TableCell <-
@@ -84,20 +85,36 @@ TableCell <-
   { p.beginTableCell(); p.endTableCell(buffer[begin:end]) }
 
 Tags <-
-  Tag* OS
+  (Tag+ WS* LineEnd)* OS
 
 Tag <-
-  OS '@' <( [^\r\n\t ]+ )>
-  { p.tagBuffer = append(p.tagBuffer, buffer[begin:end]) }
+  OS '@' <( Word )>{{[]buftags}}
 
-StringToEndOfLine <- [^\n]+
+Word <-
+  [^\r\n\t "#]+
+
+EscapedChar <- '\\' . 
+
+QuotedString <- 
+  '"' ( EscapedChar / [^\n\\"]+ )+ '"'
+
+UntilLineEnd <-
+  ( EscapedChar / [^\n\\"#]+ / QuotedString )+
+
+LineEnd <- 
+  WS* LineComment? ( NL / !. )
+
+LineComment <- 
+  '#' < [^\n]* >
+  { p.bufcmt = buffer[begin:end] }
+
+BlankLine <- (WS LineEnd)+
 
 OS <- (NL/WS)*
 
 WS <- (' ' / '\t')
 
+UntilNL <- [^\n]*
+
 NL <- ('\n' / '\r' / '\r\n')
 
-WSNLEOF <- WS* (NL / !.)
-
-MLWS <- (WS* NL)+
