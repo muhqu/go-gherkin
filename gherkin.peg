@@ -24,19 +24,19 @@ Feature <-
 Background <- 
   Tags 'Background:' WS* <UntilLineEnd?>{{buf1}} LineEnd
   { p.beginBackground(p.buf1, p.buftags); p.buftags = nil }
-  Step*
+  (Step / BlankLine)*
   { p.endBackground() } 
 
 Scenario <- 
   Tags 'Scenario:' WS* <UntilLineEnd?>{{buf1}} LineEnd
   { p.beginScenario(p.buf1, p.buftags); p.buftags = nil }
-  Step* 
+  (Step / BlankLine)*
   { p.endScenario() }
 
 Outline <- 
   Tags 'Scenario Outline:' WS* <UntilLineEnd?>{{buf1}} LineEnd
   { p.beginOutline(p.buf1, p.buftags); p.buftags = nil } 
-  Step*
+  (Step / BlankLine)*
   OutlineExamples?
   { p.endOutline() } 
 
@@ -47,7 +47,7 @@ OutlineExamples <-
   { p.endOutlineExamples() } 
 
 Step <- 
-  Tags <('Given' / 'When' / 'Then' / 'And' / 'Or' / 'But')>{{buf1}}
+  WS* <('Given' / 'When' / 'Then' / 'And' / 'Or' / 'But')>{{buf1}}
   WS* <UntilLineEnd>{{buf2}} LineEnd
   { p.beginStep(p.buf1, p.buf2) } 
   StepArgument?
@@ -82,7 +82,7 @@ TableRow <-
 
 TableCell <-
   <( [^\r\n|]+ )> '|'
-  { p.beginTableCell(); p.endTableCell(buffer[begin:end]) }
+  { p.beginTableCell(); p.endTableCell(trimWS(buffer[begin:end])) }
 
 Tags <-
   (Tag+ WS* LineEnd?)* OS
@@ -106,9 +106,12 @@ LineEnd <-
 
 LineComment <- 
   '#' < [^\n]* >
-  { p.bufcmt = buffer[begin:end] }
+  { p.bufcmt = buffer[begin:end]; p.triggerComment(p.bufcmt) }
 
-BlankLine <- (WS LineEnd)+
+BlankLine <- 
+  ( WS LineEnd / NL )
+  { p.triggerBlankLine() }
+
 
 OS <- (NL/WS)*
 
