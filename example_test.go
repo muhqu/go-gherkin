@@ -53,7 +53,6 @@ Feature: Hello World
       And a nice person called "Lisa"
      When "Bob" says to "Lisa": "Hello!"
      Then "Lisa" should reply to "Bob": "Hello!"
-
 `)
 	gherkinParser.WithNodeEventProcessor(gherkin.ProcessNodeEvent(func(e gherkin.NodeEvent) {
 		fmt.Println(e)
@@ -67,18 +66,20 @@ Feature: Hello World
 	gherkinParser.Execute()
 
 	// Output:
-	// BeginNode(Feature)
-	// BeginNode(Scenario)
-	// BeginNode(Step)
-	// EndNode(Step)
-	// BeginNode(Step)
-	// EndNode(Step)
-	// BeginNode(Step)
-	// EndNode(Step)
-	// BeginNode(Step)
-	// EndNode(Step)
-	// EndNode(Scenario)
-	// EndNode(Feature)
+	//
+	// FeatureEvent("Hello World","The world is a beautiful place\nSo let people be nice to each other",["wip"])
+	// ScenarioEvent("Nice people",["nice" "people"])
+	// StepEvent("Given","a nice person called \"Bob\"")
+	// StepEndEvent()
+	// StepEvent("And","a nice person called \"Lisa\"")
+	// StepEndEvent()
+	// StepEvent("When","\"Bob\" says to \"Lisa\": \"Hello!\"")
+	// StepEndEvent()
+	// StepEvent("Then","\"Lisa\" should reply to \"Bob\": \"Hello!\"")
+	// StepEndEvent()
+	// ScenarioEndEvent()
+	// FeatureEndEvent()
+	//
 }
 
 func ExampleNewGherkinDOMParser() {

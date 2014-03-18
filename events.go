@@ -17,52 +17,254 @@ func (fn ProcessNodeEvent) ProcessNodeEvent(e NodeEvent) {
 type EventType int
 
 const (
-	BeginNodeEventType EventType = iota
-	EndNodeEventType
+	FeatureEventType EventType = iota
+	FeatureEndEventType
+	BackgroundEventType
+	BackgroundEndEventType
+	ScenarioEventType
+	ScenarioEndEventType
+	StepEventType
+	StepEndEventType
+	OutlineEventType
+	OutlineEndEventType
+	OutlineExamplesEventType
+	OutlineExamplesEndEventType
+	PyStringEventType
+	PyStringLineEventType
+	PyStringEndEventType
+	TableEventType
+	TableRowEventType
+	TableCellEventType
+	TableEndEventType
+	BlankLineEventType
+	CommentEventType
 )
-
-func (et EventType) String() string {
-	switch et {
-	case BeginNodeEventType:
-		return "BeginNode"
-	case EndNodeEventType:
-		return "EndNode"
-	}
-	return "Unknown"
-}
 
 type NodeEvent interface {
 	EventType() EventType
-	Node() NodeInterface
-	String() string
 }
 
-type nodeEvent struct {
-	eventType EventType
-	node      NodeInterface
+type FeatureEvent struct {
+	Title       string
+	Description string
+	Tags        []string
 }
 
-func (n *nodeEvent) EventType() EventType {
-	return n.eventType
+func (*FeatureEvent) EventType() EventType {
+	return FeatureEventType
+}
+func (e *FeatureEvent) String() string {
+	return fmt.Sprintf("FeatureEvent(%q,%q,%q)", e.Title, e.Description, e.Tags)
 }
 
-func (n *nodeEvent) Node() NodeInterface {
-	return n.node
+type FeatureEndEvent struct {
 }
 
-func (n *nodeEvent) String() string {
-	return fmt.Sprintf("%s(%s)", n.EventType().String(), n.Node().NodeType().String())
+func (*FeatureEndEvent) EventType() EventType {
+	return FeatureEndEventType
+}
+func (*FeatureEndEvent) String() string {
+	return "FeatureEndEvent()"
 }
 
-func BeginNodeEvent(node NodeInterface) NodeEvent {
-	return &nodeEvent{
-		eventType: BeginNodeEventType,
-		node:      node,
-	}
+type BackgroundEvent struct {
+	Title string
+	Tags  []string
 }
-func EndNodeEvent(node NodeInterface) NodeEvent {
-	return &nodeEvent{
-		eventType: EndNodeEventType,
-		node:      node,
-	}
+
+func (*BackgroundEvent) EventType() EventType {
+	return BackgroundEventType
+}
+func (e *BackgroundEvent) String() string {
+	return fmt.Sprintf("BackgroundEvent(%q,%q)", e.Title, e.Tags)
+}
+
+type BackgroundEndEvent struct {
+}
+
+func (*BackgroundEndEvent) EventType() EventType {
+	return BackgroundEndEventType
+}
+func (*BackgroundEndEvent) String() string {
+	return "BackgroundEndEvent()"
+}
+
+type ScenarioEvent struct {
+	Title string
+	Tags  []string
+}
+
+func (*ScenarioEvent) EventType() EventType {
+	return ScenarioEventType
+}
+func (e *ScenarioEvent) String() string {
+	return fmt.Sprintf("ScenarioEvent(%q,%q)", e.Title, e.Tags)
+}
+
+type ScenarioEndEvent struct {
+}
+
+func (*ScenarioEndEvent) EventType() EventType {
+	return ScenarioEndEventType
+}
+func (*ScenarioEndEvent) String() string {
+	return "ScenarioEndEvent()"
+}
+
+type OutlineEvent struct {
+	Title string
+	Tags  []string
+}
+
+func (e *OutlineEvent) EventType() EventType {
+	return OutlineEventType
+}
+func (e *OutlineEvent) String() string {
+	return fmt.Sprintf("OutlineEvent(%q,%q)", e.Title, e.Tags)
+}
+
+type OutlineEndEvent struct {
+}
+
+func (*OutlineEndEvent) EventType() EventType {
+	return OutlineEndEventType
+}
+func (*OutlineEndEvent) String() string {
+	return "OutlineEndEvent()"
+}
+
+type OutlineExamplesEvent struct {
+}
+
+func (*OutlineExamplesEvent) EventType() EventType {
+	return OutlineExamplesEventType
+}
+func (*OutlineExamplesEvent) String() string {
+	return "OutlineExamplesEvent()"
+}
+
+type OutlineExamplesEndEvent struct {
+}
+
+func (*OutlineExamplesEndEvent) EventType() EventType {
+	return OutlineExamplesEndEventType
+}
+func (*OutlineExamplesEndEvent) String() string {
+	return "OutlineExamplesEndEvent()"
+}
+
+type StepEvent struct {
+	StepType string
+	Text     string
+}
+
+func (*StepEvent) EventType() EventType {
+	return StepEventType
+}
+func (e *StepEvent) String() string {
+	return fmt.Sprintf("StepEvent(%q,%q)", e.StepType, e.Text)
+}
+
+type StepEndEvent struct {
+}
+
+func (*StepEndEvent) EventType() EventType {
+	return StepEndEventType
+}
+func (*StepEndEvent) String() string {
+	return "StepEndEvent()"
+}
+
+type PyStringEvent struct {
+	Intent string
+}
+
+func (*PyStringEvent) EventType() EventType {
+	return PyStringEventType
+}
+func (e *PyStringEvent) String() string {
+	return fmt.Sprintf("PyStringEvent(%q)", e.Intent)
+}
+
+type PyStringLineEvent struct {
+	Line string
+}
+
+func (*PyStringLineEvent) EventType() EventType {
+	return PyStringLineEventType
+}
+func (e *PyStringLineEvent) String() string {
+	return fmt.Sprintf("PyStringLineEvent(%q)", e.Line)
+}
+
+type PyStringEndEvent struct {
+}
+
+func (*PyStringEndEvent) EventType() EventType {
+	return PyStringEndEventType
+}
+func (*PyStringEndEvent) String() string {
+	return "PyStringEndEvent()"
+}
+
+type TableEvent struct {
+}
+
+func (*TableEvent) EventType() EventType {
+	return TableEventType
+}
+func (*TableEvent) String() string {
+	return "TableEvent()"
+}
+
+type TableRowEvent struct {
+}
+
+func (*TableRowEvent) EventType() EventType {
+	return TableRowEventType
+}
+func (*TableRowEvent) String() string {
+	return "TableRowEvent()"
+}
+
+type TableCellEvent struct {
+	Content string
+}
+
+func (*TableCellEvent) EventType() EventType {
+	return TableCellEventType
+}
+func (e *TableCellEvent) String() string {
+	return fmt.Sprintf("TableCellEvent(%q)", e.Content)
+}
+
+type TableEndEvent struct {
+}
+
+func (*TableEndEvent) EventType() EventType {
+	return TableEndEventType
+}
+func (*TableEndEvent) String() string {
+	return "TableEndEvent()"
+}
+
+type BlankLineEvent struct {
+}
+
+func (*BlankLineEvent) EventType() EventType {
+	return BlankLineEventType
+}
+func (*BlankLineEvent) String() string {
+	return "BlankLineEvent()"
+}
+
+type CommentEvent struct {
+	Comment string
+}
+
+func (*CommentEvent) EventType() EventType {
+	return CommentEventType
+}
+func (e *CommentEvent) String() string {
+	return fmt.Sprintf("CommentEvent(%q)", e.Comment)
 }

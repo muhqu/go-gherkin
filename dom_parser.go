@@ -1,7 +1,6 @@
 package gherkin
 
 import (
-	"fmt"
 	"io"
 )
 
@@ -76,61 +75,93 @@ func (g *gherkinDOMParser) ParseFeature() (FeatureNode, error) {
 	return g.feature, nil
 }
 
-func (g *gherkinDOMParser) ProcessNodeEvent(e NodeEvent) {
-	et := e.EventType()
-	switch node := e.Node().(type) {
-	default:
-		fmt.Printf("unexpected type %T", node)
-	case *featureNode:
-		switch et {
-		case BeginNodeEventType:
-			g.feature = node
+func (g *gherkinDOMParser) ProcessNodeEvent(ne NodeEvent) {
+	switch e := ne.(type) {
+	// default:
+	// 	fmt.Printf("Unexpected Event %T\n", e)
+
+	case *FeatureEvent:
+		g.feature = newFeatureNode(e.Title, e.Description, e.Tags)
+
+	// case *FeatureEndEvent:
+	// 	// do nothing
+
+	case *BackgroundEvent:
+		node := newBackgroundNode(e.Title, e.Tags)
+		g.scenario = node
+		g.feature.background = node
+
+	case *ScenarioEvent:
+		node := newScenarioNode(e.Title, e.Tags)
+		g.scenario = node
+		g.feature.scenarios = append(g.feature.scenarios, node)
+
+	case *OutlineEvent:
+		node := newOutlineNode(e.Title, e.Tags)
+		g.scenario = node
+		g.outline = node
+		g.feature.scenarios = append(g.feature.scenarios, node)
+
+	case *OutlineExamplesEvent:
+		g.table = nil
+
+	case *OutlineExamplesEndEvent:
+		g.outline.examples = newOutlineExamplesNode(g.table)
+		g.table = nil
+
+	case *BackgroundEndEvent, *ScenarioEndEvent, *OutlineEndEvent:
+		g.scenario = nil
+		g.outline = nil
+		g.table = nil
+		g.pyString = nil
+
+	case *StepEvent:
+		node := newStepNode(e.StepType, e.Text)
+		g.step = node
+		g.scenario.addStep(g.step)
+
+	case *StepEndEvent:
+		if g.pyString != nil {
+			g.step.pyString = g.pyString
+		} else if g.table != nil {
+			g.step.table = g.table
 		}
-	case *backgroundNode:
-		switch et {
-		case BeginNodeEventType:
-			g.scenario = node
-			g.feature.background = node
-		case EndNodeEventType:
-			g.scenario = nil
-			g.table = nil
-		}
-	case *scenarioNode:
-		switch et {
-		case BeginNodeEventType:
-			g.scenario = node
-			g.feature.scenarios = append(g.feature.scenarios, node)
-		case EndNodeEventType:
-			g.scenario = nil
-			g.table = nil
-		}
-	case *outlineNode:
-		switch et {
-		case BeginNodeEventType:
-			g.scenario = node
-			g.feature.scenarios = append(g.feature.scenarios, node)
-		case EndNodeEventType:
-			g.scenario = nil
-			g.table = nil
-		}
-	case *stepNode:
-		switch et {
-		case BeginNodeEventType:
-			g.step = node
-			g.scenario.addStep(g.step)
-		case EndNodeEventType:
-			if g.pyString != nil {
-				g.step.pyString = g.pyString
-				g.pyString = nil
-			} else if g.table != nil {
-				g.step.table = g.table
-				g.table = nil
-			}
-			g.step = nil
-		}
-	case *tableNode:
-		g.table = node
-	case *pyStringNode:
+		g.pyString = nil
+		g.table = nil
+		g.step = nil
+
+	case *TableEvent:
+		g.table = newTableNode()
+
+	case *TableRowEvent:
+		g.table.rows = append(g.table.rows, []string{})
+
+	case *TableCellEvent:
+		rows := g.table.rows
+		i := len(rows) - 1
+		rows[i] = append(rows[i], e.Content)
+
+	// case *TableEndEvent:
+	// 	// do nothing
+
+	case *PyStringEvent:
+		node := newPyStringNode(len(e.Intent), []string{})
 		g.pyString = node
+
+	case *PyStringLineEvent:
+		indent := g.pyString.indent
+		prefix, suffix := e.Line[:indent], e.Line[indent:]
+		line := trimLeadingWS(prefix) + suffix
+		g.pyString.lines = append(g.pyString.lines, line)
+
+		// case *PyStringEndEvent:
+		// 	// do nothing
+
+		// case *BlankLineEvent:
+		// 	// TODO: integrate somehow
+
+		// case *CommentEvent:
+		// 	// TODO: integrate somehow
+
 	}
 }

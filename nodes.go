@@ -15,6 +15,8 @@ const (
 	OutlineExamplesNodeType
 	PyStringNodeType
 	TableNodeType
+	BlankLineNodeType
+	CommentNodeType
 )
 
 func (nt NodeType) String() string {
@@ -35,6 +37,10 @@ func (nt NodeType) String() string {
 		return "PyString"
 	case TableNodeType:
 		return "Table"
+	case BlankLineNodeType:
+		return "BlankLine"
+	case CommentNodeType:
+		return "Comment"
 	}
 	return "Unknown"
 }
@@ -339,4 +345,41 @@ func newTableNode() *tableNode {
 
 func (t *tableNode) Rows() [][]string {
 	return t.rows
+}
+
+// ----------------------------------------
+
+type BlankLineNode interface {
+	NodeInterface // NodeType: BlankLineNodeType
+}
+
+type blankLineNode struct {
+	abstractNode
+}
+
+func newBlankLineNode() *blankLineNode {
+	n := &blankLineNode{}
+	n.nodeType = BlankLineNodeType
+	return n
+}
+
+// ----------------------------------------
+
+type CommentNode interface {
+	NodeInterface // NodeType: CommentNodeType
+
+	Comment() string
+}
+
+type commentNode struct {
+	abstractNode
+
+	comment string
+}
+
+func newCommentNode(comment string) *commentNode {
+	n := &commentNode{}
+	n.nodeType = CommentNodeType
+	n.comment = comment
+	return n
 }
