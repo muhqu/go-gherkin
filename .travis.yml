@@ -5,6 +5,6 @@ go:
   - 1.1
   - tip
 
-install: make get-deps gherkin.peg.go
+install: make get-deps
 
-script: make test
+script: make integration

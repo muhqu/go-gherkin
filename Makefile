@@ -1,7 +1,7 @@
 
 default: gherkin.peg.go
 
-.PHONY: default clean test get-deps
+.PHONY: default clean test integration get-deps
 
 peg=$(shell which peg \
 	|| ([ -x $(GOPATH)/bin/peg ] && echo $(GOPATH)/bin/peg) \
@@ -35,6 +35,10 @@ gherkin.peg.go: gherkin.peg
 
 test: gherkin.peg.go
 	go test
+
+integration:
+	@$(MAKE) test
+	@$(MAKE) clean test
 
 clean:
 	- rm gherkin.peg.go
