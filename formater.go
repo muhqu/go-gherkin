@@ -3,6 +3,7 @@ package gherkin
 import (
 	"bytes"
 	"fmt"
+	. "github.com/muhqu/go-gherkin/nodes"
 	"io"
 	"strconv"
 	"strings"

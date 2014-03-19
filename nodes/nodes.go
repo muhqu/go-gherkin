@@ -1,4 +1,4 @@
-package gherkin
+package nodes
 
 import (
 	"strings"
@@ -69,10 +69,16 @@ func (a *abstractNode) NodeType() NodeType {
 type ScenarioNode interface {
 	NodeInterface // NodeType: ScenarioNodeType | BackgroundNodeType | OutlineNodeType
 	Title() string
-	addStep(step StepNode)
 	Steps() []StepNode
 	Tags() []string
 }
+
+type MutableScenarioNode interface {
+	ScenarioNode
+
+	AddStep(step StepNode)
+}
+
 type abstractScenarioNode struct {
 	abstractNode
 
@@ -84,14 +90,14 @@ type abstractScenarioNode struct {
 func (a *abstractScenarioNode) Title() string {
 	return a.title
 }
-func (a *abstractScenarioNode) addStep(step StepNode) {
-	a.steps = append(a.steps, step)
-}
 func (a *abstractScenarioNode) Steps() []StepNode {
 	return a.steps
 }
 func (a *abstractScenarioNode) Tags() []string {
 	return a.tags
+}
+func (a *abstractScenarioNode) AddStep(step StepNode) {
+	a.steps = append(a.steps, step)
 }
 
 // ----------------------------------------
@@ -110,15 +116,22 @@ type FeatureNode interface {
 	NodeInterface // NodeType: FeatureNodeType
 	Title() string
 	Description() string
-	Background() ScenarioNode
+	Background() BackgroundNode
 	Scenarios() []ScenarioNode
 	Tags() []string
 }
 
-func newFeatureNode(title, description string, tags []string) *featureNode {
+type MutableFeatureNode interface {
+	FeatureNode
+
+	SetBackground(background BackgroundNode)
+	AddScenario(scenario ScenarioNode)
+}
+
+func NewMutableFeatureNode(title, description string, tags []string) MutableFeatureNode {
 	n := &featureNode{
-		title:       trimWS(title),
-		description: trimWSML(description),
+		title:       title,
+		description: description,
 		tags:        tags,
 	}
 	return n
@@ -129,9 +142,17 @@ type featureNode struct {
 
 	title       string
 	description string
-	background  *backgroundNode
+	background  BackgroundNode
 	scenarios   []ScenarioNode
 	tags        []string
+}
+
+func (f *featureNode) SetBackground(background BackgroundNode) {
+	f.background = background
+}
+
+func (f *featureNode) AddScenario(scenario ScenarioNode) {
+	f.scenarios = append(f.scenarios, scenario)
 }
 
 func (f *featureNode) Title() string {
@@ -143,7 +164,7 @@ func (f *featureNode) Description() string {
 func (f *featureNode) Tags() []string {
 	return f.tags
 }
-func (f *featureNode) Background() ScenarioNode {
+func (f *featureNode) Background() BackgroundNode {
 	if n := f.background; n != nil {
 		return n
 	}
@@ -155,10 +176,18 @@ func (f *featureNode) Scenarios() []ScenarioNode {
 
 // ----------------------------------------
 
-func newBackgroundNode(title string, tags []string) *backgroundNode {
+type BackgroundNode interface {
+	ScenarioNode
+}
+
+type MutableBackgroundNode interface {
+	MutableScenarioNode
+}
+
+func NewMutableBackgroundNode(title string, tags []string) MutableBackgroundNode {
 	n := &backgroundNode{}
 	n.nodeType = BackgroundNodeType
-	n.title = trimWS(title)
+	n.title = title
 	n.tags = tags
 	return n
 }
@@ -169,10 +198,10 @@ type backgroundNode struct {
 
 // ----------------------------------------
 
-func newScenarioNode(title string, tags []string) *scenarioNode {
+func NewMutableScenarioNode(title string, tags []string) MutableScenarioNode {
 	n := &scenarioNode{}
 	n.nodeType = ScenarioNodeType
-	n.title = trimWS(title)
+	n.title = title
 	n.tags = tags
 	return n
 }
@@ -200,12 +229,24 @@ type StepNode interface {
 	PyString() PyStringNode
 	Table() TableNode
 }
+type MutableStepNode interface {
+	StepNode
 
-func newStepNode(stepType, text string) *stepNode {
+	WithStepType(string) MutableStepNode
+	WithText(string) MutableStepNode
+	SetStepType(string)
+	SetText(string)
+	WithPyString(PyStringNode) MutableStepNode
+	WithTable(TableNode) MutableStepNode
+	SetPyString(PyStringNode)
+	SetTable(TableNode)
+}
+
+func NewMutableStepNode(stepType, text string) MutableStepNode {
 	n := &stepNode{}
 	n.nodeType = StepNodeType
-	n.stepType = stepType
-	n.text = trimWS(text)
+	n.SetStepType(stepType)
+	n.SetText(text)
 	return n
 }
 
@@ -214,8 +255,39 @@ type stepNode struct {
 
 	stepType string
 	text     string
-	pyString *pyStringNode
-	table    *tableNode
+	pyString PyStringNode
+	table    TableNode
+}
+
+func (s *stepNode) SetStepType(stepType string) {
+	s.stepType = stepType
+}
+func (s *stepNode) SetText(text string) {
+	s.text = text
+}
+func (s *stepNode) WithStepType(stepType string) MutableStepNode {
+	s.SetStepType(stepType)
+	return s
+}
+func (s *stepNode) WithText(text string) MutableStepNode {
+	s.SetText(text)
+	return s
+}
+func (s *stepNode) WithPyString(pyString PyStringNode) MutableStepNode {
+	s.SetPyString(pyString)
+	return s
+}
+func (s *stepNode) WithTable(table TableNode) MutableStepNode {
+	s.SetTable(table)
+	return s
+}
+func (s *stepNode) SetPyString(pyString PyStringNode) {
+	s.pyString = pyString
+	s.table = nil
+}
+func (s *stepNode) SetTable(table TableNode) {
+	s.table = table
+	s.pyString = nil
 }
 
 func (s *stepNode) StepType() string {
@@ -244,11 +316,17 @@ type OutlineNode interface {
 
 	Examples() OutlineExamplesNode
 }
+type MutableOutlineNode interface {
+	OutlineNode
+	// MutableScenarioNode
+	AddStep(step StepNode) // stupid
+	SetExamples(examples OutlineExamplesNode)
+}
 
-func newOutlineNode(title string, tags []string) *outlineNode {
+func NewMutableOutlineNode(title string, tags []string) MutableOutlineNode {
 	n := &outlineNode{}
 	n.nodeType = OutlineNodeType
-	n.title = trimWS(title)
+	n.title = title
 	n.tags = tags
 	return n
 }
@@ -256,7 +334,11 @@ func newOutlineNode(title string, tags []string) *outlineNode {
 type outlineNode struct {
 	abstractScenarioNode
 
-	examples *outlineExamplesNode
+	examples OutlineExamplesNode
+}
+
+func (o *outlineNode) SetExamples(examples OutlineExamplesNode) {
+	o.examples = examples
 }
 
 func (o *outlineNode) Examples() OutlineExamplesNode {
@@ -271,7 +353,7 @@ type OutlineExamplesNode interface {
 	Table() TableNode
 }
 
-func newOutlineExamplesNode(table *tableNode) *outlineExamplesNode {
+func NewOutlineExamplesNode(table TableNode) *outlineExamplesNode {
 	n := &outlineExamplesNode{}
 	n.nodeType = OutlineExamplesNodeType
 	n.table = table
@@ -281,7 +363,7 @@ func newOutlineExamplesNode(table *tableNode) *outlineExamplesNode {
 type outlineExamplesNode struct {
 	abstractNode
 
-	table *tableNode
+	table TableNode
 }
 
 func (o *outlineExamplesNode) Table() TableNode {
@@ -300,19 +382,31 @@ type PyStringNode interface {
 	String() string
 }
 
-func newPyStringNode(intent int, lines []string) *pyStringNode {
+type MutablePyStringNode interface {
+	PyStringNode
+
+	AddLine(line string)
+	WithLines(lines []string) MutablePyStringNode
+}
+
+func NewMutablePyStringNode() MutablePyStringNode {
 	n := &pyStringNode{}
 	n.nodeType = PyStringNodeType
-	n.indent = intent
-	n.lines = lines
 	return n
 }
 
 type pyStringNode struct {
 	abstractNode
 
-	indent int
-	lines  []string
+	lines []string
+}
+
+func (p *pyStringNode) AddLine(line string) {
+	p.lines = append(p.lines, line)
+}
+func (p *pyStringNode) WithLines(lines []string) MutablePyStringNode {
+	p.lines = lines
+	return p
 }
 
 func (p *pyStringNode) Lines() []string {
@@ -330,6 +424,14 @@ type TableNode interface {
 
 	Rows() [][]string
 }
+type MutableTableNode interface {
+	TableNode
+
+	WithRows(rows [][]string) MutableTableNode
+	NewRow()
+	AddRow(row []string)
+	AddCell(cell string)
+}
 
 type tableNode struct {
 	abstractNode
@@ -337,10 +439,25 @@ type tableNode struct {
 	rows [][]string
 }
 
-func newTableNode() *tableNode {
+func NewMutableTableNode() MutableTableNode {
 	n := &tableNode{}
 	n.nodeType = TableNodeType
 	return n
+}
+
+func (t *tableNode) WithRows(rows [][]string) MutableTableNode {
+	t.rows = rows
+	return t
+}
+func (t *tableNode) NewRow() {
+	t.AddRow([]string{})
+}
+func (t *tableNode) AddRow(row []string) {
+	t.rows = append(t.rows, row)
+}
+func (t *tableNode) AddCell(cell string) {
+	i := len(t.rows) - 1
+	t.rows[i] = append(t.rows[i], cell)
 }
 
 func (t *tableNode) Rows() [][]string {
@@ -357,7 +474,7 @@ type blankLineNode struct {
 	abstractNode
 }
 
-func newBlankLineNode() *blankLineNode {
+func NewBlankLineNode() *blankLineNode {
 	n := &blankLineNode{}
 	n.nodeType = BlankLineNodeType
 	return n
@@ -377,7 +494,7 @@ type commentNode struct {
 	comment string
 }
 
-func newCommentNode(comment string) *commentNode {
+func NewCommentNode(comment string) *commentNode {
 	n := &commentNode{}
 	n.nodeType = CommentNodeType
 	n.comment = comment

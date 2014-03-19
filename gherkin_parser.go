@@ -40,10 +40,6 @@ func (gpw *gherkinPegWrapper) Execute() {
 	gpw.gp.Execute()
 }
 
-func (gpw *gherkinPegWrapper) Feature() FeatureNode {
-	return gpw.gp.feature
-}
-
 // ----------------------------------------
 
 type EventProcessor interface {
@@ -63,13 +59,6 @@ type GherkinEvent events.Event
 type gherkinPegBase struct {
 	logFn           LogFn
 	eventProcessors []EventProcessor
-
-	feature  *featureNode
-	scenario ScenarioNode
-	outline  *outlineNode
-	step     *stepNode
-	pyString *pyStringNode
-	table    *tableNode
 }
 
 // ----------------------------------------

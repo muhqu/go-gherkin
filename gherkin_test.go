@@ -3,6 +3,7 @@ package gherkin_test
 import (
 	"fmt"
 	"github.com/muhqu/go-gherkin"
+	"github.com/muhqu/go-gherkin/nodes"
 	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
@@ -68,7 +69,7 @@ func verifyDeadSimpleCalculator(t *testing.T, logPrefix, text string) {
 
 	scenario1 := feature.Scenarios()[0]
 	assert.NotNil(t, scenario1)
-	assert.Equal(t, gherkin.ScenarioNodeType, scenario1.NodeType())
+	assert.Equal(t, nodes.ScenarioNodeType, scenario1.NodeType())
 	assert.Equal(t, 1, len(scenario1.Tags()), "Number of tags on Scenario 1")
 	assert.Equal(t, []string{"wip"}, scenario1.Tags(), "Tags on Senario 1")
 	assert.Equal(t, 5, len(scenario1.Steps()), "Number of steps in Scenario 1")
@@ -77,8 +78,8 @@ func verifyDeadSimpleCalculator(t *testing.T, logPrefix, text string) {
 
 	scenario2 := feature.Scenarios()[1]
 	assert.NotNil(t, scenario2)
-	assert.Equal(t, gherkin.OutlineNodeType, scenario2.NodeType())
-	scenario2o, ok := scenario2.(gherkin.OutlineNode)
+	assert.Equal(t, nodes.OutlineNodeType, scenario2.NodeType())
+	scenario2o, ok := scenario2.(nodes.OutlineNode)
 	assert.True(t, ok)
 	assert.Equal(t, 2, len(scenario2.Tags()), "Number of tags on Scenario 2")
 	assert.Equal(t, []string{"wip", "expensive"}, scenario2.Tags(), "Tags on Senario 2")
@@ -93,7 +94,7 @@ func verifyDeadSimpleCalculator(t *testing.T, logPrefix, text string) {
 
 	scenario3 := feature.Scenarios()[2]
 	assert.NotNil(t, scenario3)
-	assert.Equal(t, gherkin.ScenarioNodeType, scenario3.NodeType())
+	assert.Equal(t, nodes.ScenarioNodeType, scenario3.NodeType())
 	assert.Equal(t, 0, len(scenario3.Tags()), "Number of tags on Scenario 3")
 	assert.Equal(t, 2, len(scenario3.Steps()), "Number of steps in Scenario 3")
 	assert.Equal(t, "When", scenario3.Steps()[0].StepType())
@@ -304,7 +305,7 @@ Scenario: Nice people`)
 
 	scenario1 := feature.Scenarios()[0]
 	assert.NotNil(t, scenario1)
-	assert.Equal(t, gherkin.ScenarioNodeType, scenario1.NodeType())
+	assert.Equal(t, nodes.ScenarioNodeType, scenario1.NodeType())
 	assert.Equal(t, 0, len(scenario1.Steps()), "Number of steps in Scenario 1")
 }
 
@@ -327,7 +328,7 @@ Feature: Hello World
 
 	scenario1 := feature.Scenarios()[0]
 	assert.NotNil(t, scenario1)
-	assert.Equal(t, gherkin.ScenarioNodeType, scenario1.NodeType())
+	assert.Equal(t, nodes.ScenarioNodeType, scenario1.NodeType())
 	assert.Equal(t, 4, len(scenario1.Steps()), "Number of steps in Scenario 1")
 	i := 0
 	assert.Equal(t, "Given", scenario1.Steps()[i].StepType())
@@ -375,7 +376,7 @@ Feature: Hello World                             # feature comment
 	if ok := assert.NotNil(t, scenario1); !ok {
 		return
 	}
-	assert.Equal(t, gherkin.ScenarioNodeType, scenario1.NodeType())
+	assert.Equal(t, nodes.ScenarioNodeType, scenario1.NodeType())
 	assert.Equal(t, 4, len(scenario1.Steps()), "Number of steps in Scenario 1")
 	i := 0
 	assert.Equal(t, "Given", scenario1.Steps()[i].StepType())
@@ -421,7 +422,7 @@ Feature: Hello "#World"                                  # feature comment
 	if ok := assert.NotNil(t, scenario1); !ok {
 		return
 	}
-	assert.Equal(t, gherkin.ScenarioNodeType, scenario1.NodeType())
+	assert.Equal(t, nodes.ScenarioNodeType, scenario1.NodeType())
 	assert.Equal(t, 4, len(scenario1.Steps()), "Number of steps in Scenario 1")
 	i := 0
 	assert.Equal(t, "Given", scenario1.Steps()[i].StepType())

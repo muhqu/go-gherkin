@@ -2,6 +2,7 @@ package gherkin
 
 import (
 	. "github.com/muhqu/go-gherkin/events"
+	. "github.com/muhqu/go-gherkin/nodes"
 	"io"
 )
 
@@ -16,14 +17,16 @@ type GherkinDOMParser interface {
 }
 
 type gherkinDOMParser struct {
-	gp        GherkinParser
-	processed bool
-	feature   *featureNode
-	scenario  ScenarioNode
-	outline   *outlineNode
-	step      *stepNode
-	pyString  *pyStringNode
-	table     *tableNode
+	gp             GherkinParser
+	processed      bool
+	feature        MutableFeatureNode
+	scenario       MutableScenarioNode
+	background     MutableBackgroundNode
+	outline        MutableOutlineNode
+	step           MutableStepNode
+	pyStringIndent int
+	pyString       MutablePyStringNode
+	table          MutableTableNode
 }
 
 func NewGherkinDOMParser(content string) GherkinDOMParser {
@@ -82,32 +85,33 @@ func (g *gherkinDOMParser) ProcessEvent(event GherkinEvent) {
 	// 	fmt.Printf("Unexpected Event %T\n", e)
 
 	case *FeatureEvent:
-		g.feature = newFeatureNode(e.Title, e.Description, e.Tags)
+		g.feature = NewMutableFeatureNode(e.Title, e.Description, e.Tags)
 
 	// case *FeatureEndEvent:
 	// 	// do nothing
 
 	case *BackgroundEvent:
-		node := newBackgroundNode(e.Title, e.Tags)
+		node := NewMutableBackgroundNode(e.Title, e.Tags)
 		g.scenario = node
-		g.feature.background = node
+		g.feature.SetBackground(node)
 
 	case *ScenarioEvent:
-		node := newScenarioNode(e.Title, e.Tags)
+		node := NewMutableScenarioNode(e.Title, e.Tags)
 		g.scenario = node
-		g.feature.scenarios = append(g.feature.scenarios, node)
+		g.feature.AddScenario(node)
 
 	case *OutlineEvent:
-		node := newOutlineNode(e.Title, e.Tags)
+		node := NewMutableOutlineNode(e.Title, e.Tags)
 		g.scenario = node
 		g.outline = node
-		g.feature.scenarios = append(g.feature.scenarios, node)
+		g.feature.AddScenario(node)
 
 	case *OutlineExamplesEvent:
 		g.table = nil
 
 	case *OutlineExamplesEndEvent:
-		g.outline.examples = newOutlineExamplesNode(g.table)
+		examples := NewOutlineExamplesNode(g.table)
+		g.outline.SetExamples(examples)
 		g.table = nil
 
 	case *BackgroundEndEvent, *ScenarioEndEvent, *OutlineEndEvent:
@@ -117,43 +121,40 @@ func (g *gherkinDOMParser) ProcessEvent(event GherkinEvent) {
 		g.pyString = nil
 
 	case *StepEvent:
-		node := newStepNode(e.StepType, e.Text)
-		g.step = node
-		g.scenario.addStep(g.step)
+		g.step = NewMutableStepNode(e.StepType, e.Text)
+		g.scenario.AddStep(g.step)
 
 	case *StepEndEvent:
 		if g.pyString != nil {
-			g.step.pyString = g.pyString
+			g.step.WithPyString(g.pyString)
 		} else if g.table != nil {
-			g.step.table = g.table
+			g.step.WithTable(g.table)
 		}
 		g.pyString = nil
 		g.table = nil
 		g.step = nil
 
 	case *TableEvent:
-		g.table = newTableNode()
+		g.table = NewMutableTableNode()
 
 	case *TableRowEvent:
-		g.table.rows = append(g.table.rows, []string{})
+		g.table.NewRow()
 
 	case *TableCellEvent:
-		rows := g.table.rows
-		i := len(rows) - 1
-		rows[i] = append(rows[i], e.Content)
+		g.table.AddCell(e.Content)
 
 	// case *TableEndEvent:
 	// 	// do nothing
 
 	case *PyStringEvent:
-		node := newPyStringNode(len(e.Intent), []string{})
-		g.pyString = node
+		g.pyStringIndent = len(e.Intent)
+		g.pyString = NewMutablePyStringNode()
 
 	case *PyStringLineEvent:
-		indent := g.pyString.indent
+		indent := g.pyStringIndent
 		prefix, suffix := e.Line[:indent], e.Line[indent:]
 		line := trimLeadingWS(prefix) + suffix
-		g.pyString.lines = append(g.pyString.lines, line)
+		g.pyString.AddLine(line)
 
 		// case *PyStringEndEvent:
 		// 	// do nothing

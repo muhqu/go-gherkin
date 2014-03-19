@@ -49,7 +49,7 @@ OutlineExamples <-
 Step <- 
   WS* <('Given' / 'When' / 'Then' / 'And' / 'Or' / 'But')>{{buf1}}
   WS* <UntilLineEnd>{{buf2}} LineEnd
-  { p.beginStep(p.buf1, p.buf2) } 
+  { p.beginStep(trimWS(p.buf1), trimWS(p.buf2)) } 
   StepArgument?
   { p.endStep() }
 

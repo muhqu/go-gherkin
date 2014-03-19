@@ -1,6 +1,6 @@
 /*
 
-command-line gherkin formater or pretty printer.
+Command gherkinfmt is a command-line gherkin formater and pretty printer.
 
 Usage
 
