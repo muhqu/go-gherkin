@@ -771,7 +771,7 @@ func (p *gherkinPeg) Execute() {
 		case ruleAction18:
 			p.buf2 = buffer[begin:end]
 		case ruleAction19:
-			p.beginStep(p.buf1, p.buf2)
+			p.beginStep(trimWS(p.buf1), trimWS(p.buf2))
 		case ruleAction20:
 			p.endStep()
 		case ruleAction21:
@@ -3828,7 +3828,7 @@ func (p *gherkinPeg) Init() {
 		nil,
 		/* 47 Action18 <- <{ p.buf2 = buffer[begin:end] }> */
 		nil,
-		/* 48 Action19 <- <{ p.beginStep(p.buf1, p.buf2) }> */
+		/* 48 Action19 <- <{ p.beginStep(trimWS(p.buf1), trimWS(p.buf2)) }> */
 		nil,
 		/* 49 Action20 <- <{ p.endStep() }> */
 		nil,
