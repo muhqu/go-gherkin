@@ -1,3 +1,4 @@
+// Sub-Package gherkin/events provides the data-structure types for the evented gherkin parser.
 package events
 
 import (

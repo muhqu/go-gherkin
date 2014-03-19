@@ -1,3 +1,4 @@
+// Sub-Package gherkin/nodes provides the data-structure types for the gherkin DOM parser.
 package nodes
 
 import (
