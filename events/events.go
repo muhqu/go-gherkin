@@ -1,20 +1,14 @@
-package gherkin
+package events
 
 import (
 	"fmt"
 )
 
-type NodeEventProcessor interface {
-	ProcessNodeEvent(NodeEvent)
-}
-
-type ProcessNodeEvent func(NodeEvent)
-
-func (fn ProcessNodeEvent) ProcessNodeEvent(e NodeEvent) {
-	fn(e)
-}
-
 type EventType int
+
+type Event interface {
+	EventType() EventType
+}
 
 const (
 	FeatureEventType EventType = iota
@@ -39,10 +33,6 @@ const (
 	BlankLineEventType
 	CommentEventType
 )
-
-type NodeEvent interface {
-	EventType() EventType
-}
 
 type FeatureEvent struct {
 	Title       string

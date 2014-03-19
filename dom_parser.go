@@ -1,6 +1,7 @@
 package gherkin
 
 import (
+	. "github.com/muhqu/go-gherkin/events"
 	"io"
 )
 
@@ -27,12 +28,12 @@ type gherkinDOMParser struct {
 
 func NewGherkinDOMParser(content string) GherkinDOMParser {
 	g := &gherkinDOMParser{gp: NewGherkinParser(content)}
-	g.gp.WithNodeEventProcessor(g)
+	g.gp.WithEventProcessor(g)
 	return g
 }
 
-func (g *gherkinDOMParser) WithNodeEventProcessor(ep NodeEventProcessor) {
-	g.gp.WithNodeEventProcessor(ep)
+func (g *gherkinDOMParser) WithEventProcessor(ep EventProcessor) {
+	g.gp.WithEventProcessor(ep)
 }
 
 func (g *gherkinDOMParser) WithLogFn(logFn LogFn) {
@@ -75,8 +76,8 @@ func (g *gherkinDOMParser) ParseFeature() (FeatureNode, error) {
 	return g.feature, nil
 }
 
-func (g *gherkinDOMParser) ProcessNodeEvent(ne NodeEvent) {
-	switch e := ne.(type) {
+func (g *gherkinDOMParser) ProcessEvent(event GherkinEvent) {
+	switch e := event.(type) {
 	// default:
 	// 	fmt.Printf("Unexpected Event %T\n", e)
 

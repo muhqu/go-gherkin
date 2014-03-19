@@ -1,8 +1,12 @@
 package gherkin
 
+import (
+	"github.com/muhqu/go-gherkin/events"
+)
+
 type GherkinParser interface {
 	WithLogFn(LogFn)
-	WithNodeEventProcessor(NodeEventProcessor)
+	WithEventProcessor(EventProcessor)
 	Init()
 	Parse() error
 	Execute()
@@ -20,7 +24,7 @@ func (gpw *gherkinPegWrapper) WithLogFn(logFn LogFn) {
 	gpw.gp.logFn = logFn
 }
 
-func (gpw *gherkinPegWrapper) WithNodeEventProcessor(ep NodeEventProcessor) {
+func (gpw *gherkinPegWrapper) WithEventProcessor(ep EventProcessor) {
 	gpw.gp.eventProcessors = append(gpw.gp.eventProcessors, ep)
 }
 
@@ -42,9 +46,23 @@ func (gpw *gherkinPegWrapper) Feature() FeatureNode {
 
 // ----------------------------------------
 
+type EventProcessor interface {
+	ProcessEvent(GherkinEvent)
+}
+
+type ProcessEvent func(GherkinEvent)
+
+func (fn ProcessEvent) ProcessEvent(e GherkinEvent) {
+	fn(e)
+}
+
+type GherkinEvent events.Event
+
+// ----------------------------------------
+
 type gherkinPegBase struct {
 	logFn           LogFn
-	eventProcessors []NodeEventProcessor
+	eventProcessors []EventProcessor
 
 	feature  *featureNode
 	scenario ScenarioNode
@@ -64,74 +82,74 @@ func (gp *gherkinPegBase) log(msg string, args ...interface{}) {
 	}
 }
 
-func (gp *gherkinPegBase) emit(e NodeEvent) {
+func (gp *gherkinPegBase) emit(e GherkinEvent) {
 	for _, ep := range gp.eventProcessors {
-		ep.ProcessNodeEvent(e)
+		ep.ProcessEvent(e)
 	}
 }
 
 func (gp *gherkinPegBase) beginFeature(title string, description string, tags []string) {
 	gp.log("BeginFeature: %#v: %#v tags:%+v", title, description, tags)
-	gp.emit(&FeatureEvent{title, description, tags})
+	gp.emit(&events.FeatureEvent{title, description, tags})
 }
 func (gp *gherkinPegBase) endFeature() {
 	gp.log("EndFeature")
-	gp.emit(&FeatureEndEvent{})
+	gp.emit(&events.FeatureEndEvent{})
 }
 
 func (gp *gherkinPegBase) beginBackground(title string, tags []string) {
 	gp.log("BeginBackground: %#v tags:%+v", title, tags)
-	gp.emit(&BackgroundEvent{title, tags})
+	gp.emit(&events.BackgroundEvent{title, tags})
 }
 func (gp *gherkinPegBase) endBackground() {
 	gp.log("EndBackground")
-	gp.emit(&BackgroundEndEvent{})
+	gp.emit(&events.BackgroundEndEvent{})
 }
 
 func (gp *gherkinPegBase) beginScenario(title string, tags []string) {
 	gp.log("BeginScenario: %#v tags:%+v", title, tags)
-	gp.emit(&ScenarioEvent{title, tags})
+	gp.emit(&events.ScenarioEvent{title, tags})
 }
 func (gp *gherkinPegBase) endScenario() {
 	gp.log("EndScenario")
-	gp.emit(&ScenarioEndEvent{})
+	gp.emit(&events.ScenarioEndEvent{})
 }
 
 func (gp *gherkinPegBase) beginOutline(title string, tags []string) {
 	gp.log("BeginOutline: %#v tags:%+v", title, tags)
-	gp.emit(&OutlineEvent{title, tags})
+	gp.emit(&events.OutlineEvent{title, tags})
 }
 func (gp *gherkinPegBase) endOutline() {
 	gp.log("EndOutline")
-	gp.emit(&OutlineEndEvent{})
+	gp.emit(&events.OutlineEndEvent{})
 }
 
 func (gp *gherkinPegBase) beginOutlineExamples() {
 	gp.log("BeginOutlineExamples")
-	gp.emit(&OutlineExamplesEvent{})
+	gp.emit(&events.OutlineExamplesEvent{})
 }
 func (gp *gherkinPegBase) endOutlineExamples() {
 	gp.log("EndOutlineExamples")
-	gp.emit(&OutlineExamplesEndEvent{})
+	gp.emit(&events.OutlineExamplesEndEvent{})
 }
 
 func (gp *gherkinPegBase) beginStep(stepType, name string) {
 	gp.log("BeginStep: %#v: %#v", stepType, name)
-	gp.emit(&StepEvent{stepType, name})
+	gp.emit(&events.StepEvent{stepType, name})
 }
 func (gp *gherkinPegBase) endStep() {
 	gp.log("EndStep")
-	gp.emit(&StepEndEvent{})
+	gp.emit(&events.StepEndEvent{})
 }
 
 func (gp *gherkinPegBase) beginPyString(indent string) {
 	width := len(trimNL(indent))
 	gp.log("BeginPyString: indent=%d", width)
-	gp.emit(&PyStringEvent{indent})
+	gp.emit(&events.PyStringEvent{indent})
 }
 func (gp *gherkinPegBase) bufferPyString(line string) {
 	gp.log("BufferPyString: %#v", line)
-	gp.emit(&PyStringLineEvent{line})
+	gp.emit(&events.PyStringLineEvent{line})
 	/*
 		indent := gp.pyString.indent
 		prefix, suffix := line[:indent], line[indent:]
@@ -142,23 +160,23 @@ func (gp *gherkinPegBase) bufferPyString(line string) {
 }
 func (gp *gherkinPegBase) endPyString() {
 	gp.log("EndPyString")
-	gp.emit(&PyStringEndEvent{})
+	gp.emit(&events.PyStringEndEvent{})
 }
 
 func (gp *gherkinPegBase) beginTable() {
 	gp.log("BeginTable")
-	gp.emit(&TableEvent{})
+	gp.emit(&events.TableEvent{})
 }
 func (gp *gherkinPegBase) beginTableRow() {
 	gp.log("BeginTableRow")
-	gp.emit(&TableRowEvent{})
+	gp.emit(&events.TableRowEvent{})
 }
 func (gp *gherkinPegBase) beginTableCell() {
 	gp.log("BeginTableCell")
 }
 func (gp *gherkinPegBase) endTableCell(buf string) {
 	gp.log("EndTableCell: %#v", buf)
-	gp.emit(&TableCellEvent{buf})
+	gp.emit(&events.TableCellEvent{buf})
 	/*
 		rows := gp.table.rows
 		i := len(rows) - 1
@@ -170,14 +188,14 @@ func (gp *gherkinPegBase) endTableRow() {
 }
 func (gp *gherkinPegBase) endTable() {
 	gp.log("EndTable")
-	gp.emit(&TableEndEvent{})
+	gp.emit(&events.TableEndEvent{})
 }
 
 func (gp *gherkinPegBase) triggerComment(comment string) {
 	gp.log("triggerComment")
-	gp.emit(&CommentEvent{comment})
+	gp.emit(&events.CommentEvent{comment})
 }
 func (gp *gherkinPegBase) triggerBlankLine() {
 	gp.log("triggerBlankLine")
-	gp.emit(&BlankLineEvent{})
+	gp.emit(&events.BlankLineEvent{})
 }

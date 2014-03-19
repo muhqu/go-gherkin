@@ -54,7 +54,7 @@ Feature: Hello World
      When "Bob" says to "Lisa": "Hello!"
      Then "Lisa" should reply to "Bob": "Hello!"
 `)
-	gherkinParser.WithNodeEventProcessor(gherkin.ProcessNodeEvent(func(e gherkin.NodeEvent) {
+	gherkinParser.WithEventProcessor(gherkin.ProcessEvent(func(e gherkin.GherkinEvent) {
 		fmt.Println(e)
 	}))
 
