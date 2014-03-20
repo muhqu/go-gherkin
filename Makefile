@@ -34,7 +34,7 @@ gherkin.peg.go: gherkin.peg
 	rm gherkin.peg.pp gherkin.peg.pp.go
 
 test: gherkin.peg.go
-	go test
+	go test ./ ./*/
 
 integration:
 	@$(MAKE) test
