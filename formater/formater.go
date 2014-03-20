@@ -13,7 +13,7 @@ import (
 )
 
 type GherkinFormater interface {
-	Format(GherkinDOM) io.Reader
+	Format(GherkinDOM, io.Writer)
 }
 
 // -------------------
@@ -27,14 +27,15 @@ type gherkinPrettyPrinter struct {
 	io.Writer
 }
 
-func (gpf *GherkinPrettyFormater) Format(gd GherkinDOM) io.Reader {
+func (gpf *GherkinPrettyFormater) Format(gd GherkinDOM, out io.Writer) {
 	sw := new(bytes.Buffer)
 	g := &gherkinPrettyPrinter{
 		gpf:    gpf,
 		Writer: sw,
 	}
 	g.FormatFeature(gd.Feature())
-	return bytes.NewReader(sw.Bytes())
+	in := bytes.NewReader(sw.Bytes())
+	io.Copy(out, in)
 }
 
 func (g *gherkinPrettyPrinter) write(s string) {

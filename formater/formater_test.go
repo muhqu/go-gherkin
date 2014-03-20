@@ -3,7 +3,6 @@ package formater_test
 import (
 	"github.com/muhqu/go-gherkin"
 	"github.com/muhqu/go-gherkin/formater"
-	"io"
 	"os"
 )
 
@@ -55,8 +54,7 @@ func ExampleGherkinPrettyFormater_1() {
 
 	// unformatedGherkin := `@dead @simple Feature: Dead Simple Calculator ...`
 	gp := gherkin.NewGherkinDOMParser(unformatedGherkin)
-	reader := fmt.Format(gp)
-	io.Copy(os.Stdout, reader)
+	fmt.Format(gp, os.Stdout)
 
 	// Output:
 	// @dead @simple
@@ -121,8 +119,7 @@ func ExampleGherkinPrettyFormater_2() {
 	// unformatedGherkin := `@dead @simple Feature: Dead Simple Calculator ...`
 	gp := gherkin.NewGherkinDOMParser(unformatedGherkin)
 
-	reader := fmt.Format(gp)
-	io.Copy(os.Stdout, reader)
+	fmt.Format(gp, os.Stdout)
 
 	// Output:
 	// @dead @simple
