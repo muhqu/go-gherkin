@@ -1,7 +1,8 @@
-package gherkin_test
+package formater_test
 
 import (
 	"github.com/muhqu/go-gherkin"
+	"github.com/muhqu/go-gherkin/formater"
 	"io"
 	"os"
 )
@@ -50,11 +51,11 @@ Then the result should be 6`
 
 func ExampleGherkinPrettyFormater_1() {
 
-	formater := &gherkin.GherkinPrettyFormater{}
+	fmt := &formater.GherkinPrettyFormater{}
 
 	// unformatedGherkin := `@dead @simple Feature: Dead Simple Calculator ...`
 	gp := gherkin.NewGherkinDOMParser(unformatedGherkin)
-	reader := gp.Format(formater)
+	reader := fmt.Format(gp)
 	io.Copy(os.Stdout, reader)
 
 	// Output:
@@ -113,14 +114,14 @@ func ExampleGherkinPrettyFormater_1() {
 
 func ExampleGherkinPrettyFormater_2() {
 
-	formater := &gherkin.GherkinPrettyFormater{
+	fmt := &formater.GherkinPrettyFormater{
 		CenterSteps: true,
 	}
 
 	// unformatedGherkin := `@dead @simple Feature: Dead Simple Calculator ...`
 	gp := gherkin.NewGherkinDOMParser(unformatedGherkin)
 
-	reader := gp.Format(formater)
+	reader := fmt.Format(gp)
 	io.Copy(os.Stdout, reader)
 
 	// Output:

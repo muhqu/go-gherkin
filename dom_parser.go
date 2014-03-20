@@ -3,12 +3,10 @@ package gherkin
 import (
 	. "github.com/muhqu/go-gherkin/events"
 	. "github.com/muhqu/go-gherkin/nodes"
-	"io"
 )
 
 type GherkinDOM interface {
 	Feature() FeatureNode
-	Format(f GherkinFormater) io.Reader
 }
 type GherkinDOMParser interface {
 	GherkinParser

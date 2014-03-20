@@ -1,8 +1,10 @@
-package gherkin
+// Sub-Package gherkin/formater provides everything to pretty-print a Gherkin DOM.
+package formater
 
 import (
 	"bytes"
 	"fmt"
+	. "github.com/muhqu/go-gherkin"
 	. "github.com/muhqu/go-gherkin/nodes"
 	"io"
 	"strconv"
@@ -12,10 +14,6 @@ import (
 
 type GherkinFormater interface {
 	Format(GherkinDOM) io.Reader
-}
-
-func (g *gherkinDOMParser) Format(f GherkinFormater) io.Reader {
-	return f.Format(g)
 }
 
 // -------------------
