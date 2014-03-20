@@ -41,7 +41,7 @@ Feature: Hello World
 }
 
 func ExampleNewGherkinParser() {
-	gherkinParser := gherkin.NewGherkinParser(`
+	gp := gherkin.NewGherkinParser(`
 @wip
 Feature: Hello World
   The world is a beautiful place
@@ -54,16 +54,16 @@ Feature: Hello World
      When "Bob" says to "Lisa": "Hello!"
      Then "Lisa" should reply to "Bob": "Hello!"
 `)
-	gherkinParser.WithEventProcessor(gherkin.EventProcessorFn(func(e gherkin.GherkinEvent) {
+	gp.WithEventProcessor(gherkin.EventProcessorFn(func(e gherkin.GherkinEvent) {
 		fmt.Println(e)
 	}))
 
-	gherkinParser.Init()
-	err := gherkinParser.Parse()
+	gp.Init()
+	err := gp.Parse()
 	if err != nil {
 		panic(err)
 	}
-	gherkinParser.Execute()
+	gp.Execute()
 
 	// Output:
 	//
@@ -83,7 +83,7 @@ Feature: Hello World
 }
 
 func ExampleNewGherkinDOMParser() {
-	gherkinParser := gherkin.NewGherkinDOMParser(`
+	gp := gherkin.NewGherkinDOMParser(`
 @wip
 Feature: Hello World
   The world is a beautiful place
@@ -97,7 +97,7 @@ Feature: Hello World
      Then "Lisa" should reply to "Bob": "Hello!"
 
 `)
-	feature := gherkinParser.Feature()
+	feature := gp.Feature()
 
 	fmt.Printf("feature: %#v %#v\n", feature.Title(), feature.Tags())
 	fmt.Printf("no. scenarios: %#v\n", len(feature.Scenarios()))
@@ -111,7 +111,7 @@ Feature: Hello World
 }
 
 func ExampleLogFn() {
-	gherkinParser := gherkin.NewGherkinParser(`
+	gp := gherkin.NewGherkinParser(`
 @wip
 Feature: Hello World
   The world is a beautiful place
@@ -125,16 +125,16 @@ Feature: Hello World
      Then "Lisa" should reply to "Bob": "Hello!"
 `)
 
-	gherkinParser.WithLogFn(func(msg string, args ...interface{}) {
+	gp.WithLogFn(func(msg string, args ...interface{}) {
 		fmt.Printf(msg+"\n", args...)
 	})
 
-	gherkinParser.Init()
-	err := gherkinParser.Parse()
+	gp.Init()
+	err := gp.Parse()
 	if err != nil {
 		panic(err)
 	}
-	gherkinParser.Execute()
+	gp.Execute()
 
 	// Output:
 	// BeginFeature: "Hello World": "The world is a beautiful place\nSo let people be nice to each other" tags:[wip]
