@@ -46,9 +46,9 @@ type EventProcessor interface {
 	ProcessEvent(GherkinEvent)
 }
 
-type ProcessEvent func(GherkinEvent)
+type EventProcessorFn func(GherkinEvent)
 
-func (fn ProcessEvent) ProcessEvent(e GherkinEvent) {
+func (fn EventProcessorFn) ProcessEvent(e GherkinEvent) {
 	fn(e)
 }
 
