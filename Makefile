@@ -36,9 +36,7 @@ gherkin.peg.go: gherkin.peg
 test: gherkin.peg.go
 	go test ./ ./*/
 
-integration:
-	@$(MAKE) test
-	@$(MAKE) clean test
+integration: get-deps clean test
 
 clean:
 	- rm gherkin.peg.go
