@@ -2,10 +2,9 @@
 package formater
 
 import (
-	"bytes"
 	"fmt"
-	. "github.com/muhqu/go-gherkin"
-	. "github.com/muhqu/go-gherkin/nodes"
+	"github.com/muhqu/go-gherkin"
+	"github.com/muhqu/go-gherkin/nodes"
 	"io"
 	"strconv"
 	"strings"
@@ -13,7 +12,12 @@ import (
 )
 
 type GherkinFormater interface {
-	Format(GherkinDOM, io.Writer)
+	Format(gherkin.GherkinDOM, io.Writer)
+	FormatFeature(nodes.FeatureNode, io.Writer)
+	FormatScenario(nodes.ScenarioNode, io.Writer)
+	FormatStep(nodes.StepNode, io.Writer)
+	FormatTable(nodes.TableNode, io.Writer)
+	FormatPyString(nodes.PyStringNode, io.Writer)
 }
 
 // -------------------
@@ -21,21 +25,36 @@ type GherkinFormater interface {
 type GherkinPrettyFormater struct {
 	AnsiColors  bool
 	CenterSteps bool
+	SkipSteps   bool
 }
 type gherkinPrettyPrinter struct {
 	gpf *GherkinPrettyFormater
 	io.Writer
 }
 
-func (gpf *GherkinPrettyFormater) Format(gd GherkinDOM, out io.Writer) {
-	sw := new(bytes.Buffer)
-	g := &gherkinPrettyPrinter{
-		gpf:    gpf,
-		Writer: sw,
-	}
-	g.FormatFeature(gd.Feature())
-	in := bytes.NewReader(sw.Bytes())
-	io.Copy(out, in)
+func (gpf *GherkinPrettyFormater) Format(gd gherkin.GherkinDOM, out io.Writer) {
+	gpf.FormatFeature(gd.Feature(), out)
+}
+
+func (gpf *GherkinPrettyFormater) FormatFeature(node nodes.FeatureNode, out io.Writer) {
+	g := &gherkinPrettyPrinter{gpf, out}
+	g.FormatFeature(node)
+}
+func (gpf *GherkinPrettyFormater) FormatScenario(node nodes.ScenarioNode, out io.Writer) {
+	g := &gherkinPrettyPrinter{gpf, out}
+	g.FormatScenario(node)
+}
+func (gpf *GherkinPrettyFormater) FormatStep(node nodes.StepNode, out io.Writer) {
+	g := &gherkinPrettyPrinter{gpf, out}
+	g.FormatStep(node)
+}
+func (gpf *GherkinPrettyFormater) FormatTable(node nodes.TableNode, out io.Writer) {
+	g := &gherkinPrettyPrinter{gpf, out}
+	g.FormatTable(node)
+}
+func (gpf *GherkinPrettyFormater) FormatPyString(node nodes.PyStringNode, out io.Writer) {
+	g := &gherkinPrettyPrinter{gpf, out}
+	g.FormatPyString(node)
 }
 
 func (g *gherkinPrettyPrinter) write(s string) {
@@ -69,7 +88,7 @@ func (g *gherkinPrettyPrinter) colored(color ansiStyle, str string) string {
 	return str
 }
 
-func (g *gherkinPrettyPrinter) FormatFeature(node FeatureNode) {
+func (g *gherkinPrettyPrinter) FormatFeature(node nodes.FeatureNode) {
 	tags := node.Tags()
 	if len(tags) > 0 {
 		g.write(g.colored(c_CYAN, fmtTags(tags)) + "\n")
@@ -80,7 +99,7 @@ func (g *gherkinPrettyPrinter) FormatFeature(node FeatureNode) {
 	}
 	g.write("\n")
 
-	if node.Background() != nil {
+	if !g.gpf.SkipSteps && node.Background() != nil {
 		g.FormatScenario(node.Background())
 		g.write("\n")
 	}
@@ -91,29 +110,31 @@ func (g *gherkinPrettyPrinter) FormatFeature(node FeatureNode) {
 	}
 }
 
-func (g *gherkinPrettyPrinter) FormatScenario(node ScenarioNode) {
+func (g *gherkinPrettyPrinter) FormatScenario(node nodes.ScenarioNode) {
 	tags := node.Tags()
 	if len(tags) > 0 {
 		g.write("  " + g.colored(c_CYAN, fmtTags(tags)) + "\n")
 	}
 	switch node.NodeType() {
-	case BackgroundNodeType:
+	case nodes.BackgroundNodeType:
 		g.write(fmt.Sprintf("  %s\n", g.colored(c_BOLD, "Background:")))
-	case ScenarioNodeType:
+	case nodes.ScenarioNodeType:
 		g.write(fmt.Sprintf("  %s %s\n", g.colored(c_BOLD, "Scenario:"), g.colored(c_WHITE, node.Title())))
-	case OutlineNodeType:
+	case nodes.OutlineNodeType:
 		g.write(fmt.Sprintf("  %s %s\n", g.colored(c_BOLD, "Scenario Outline:"), g.colored(c_WHITE, node.Title())))
 	}
-	for _, step := range node.Steps() {
-		g.FormatStep(step)
-	}
-	if node.NodeType() == OutlineNodeType {
-		g.write(g.colored(c_WHITE, "\n    Examples:\n"))
-		g.FormatTable(node.(OutlineNode).Examples().Table())
+	if !g.gpf.SkipSteps {
+		for _, step := range node.Steps() {
+			g.FormatStep(step)
+		}
+		if node.NodeType() == nodes.OutlineNodeType {
+			g.write(g.colored(c_WHITE, "\n    Examples:\n"))
+			g.FormatTable(node.(nodes.OutlineNode).Examples().Table())
+		}
 	}
 }
 
-func (g *gherkinPrettyPrinter) FormatStep(node StepNode) {
+func (g *gherkinPrettyPrinter) FormatStep(node nodes.StepNode) {
 	if g.gpf.CenterSteps {
 		g.write(g.colored(c_BOLD_GREEN, fmt.Sprintf("%9s", node.StepType())) + g.colored(c_GREEN, fmt.Sprintf(" %s\n", node.Text())))
 	} else {
@@ -129,7 +150,7 @@ func (g *gherkinPrettyPrinter) FormatStep(node StepNode) {
 	}
 }
 
-func (g *gherkinPrettyPrinter) FormatTable(node TableNode) {
+func (g *gherkinPrettyPrinter) FormatTable(node nodes.TableNode) {
 	rows := node.Rows()
 	cellwidth := make(map[int]int, 100)
 	for _, row := range rows {
@@ -157,7 +178,7 @@ func (g *gherkinPrettyPrinter) FormatTable(node TableNode) {
 	}
 }
 
-func (g *gherkinPrettyPrinter) FormatPyString(node PyStringNode) {
+func (g *gherkinPrettyPrinter) FormatPyString(node nodes.PyStringNode) {
 	prefix := "      "
 	quotes := g.colored(c_BOLD, "\"\"\"")
 	g.write(prefix + quotes + "\n")

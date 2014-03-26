@@ -2097,11 +2097,11 @@ func (p *gherkinPeg) Init() {
 												depth--
 												add(ruleUntilNL, position128)
 											}
-											if !rules[ruleNL]() {
-												goto l122
-											}
 											depth--
 											add(rulePegText, position127)
+										}
+										if !rules[ruleNL]() {
+											goto l122
 										}
 										{
 											add(ruleAction23, position)
@@ -2186,7 +2186,7 @@ func (p *gherkinPeg) Init() {
 			position, tokenIndex, depth = position139, tokenIndex139, depth139
 			return false
 		},
-		/* 10 PyStringLine <- <(<(UntilNL NL)> Action23)> */
+		/* 10 PyStringLine <- <(<UntilNL> NL Action23)> */
 		nil,
 		/* 11 Table <- <(Action24 TableRow+ Action25)> */
 		func() bool {

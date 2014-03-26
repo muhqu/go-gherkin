@@ -1,10 +1,6 @@
 // Sub-Package gherkin/nodes provides the data-structure types for the gherkin DOM parser.
 package nodes
 
-import (
-	"strings"
-)
-
 type NodeType int
 
 const (
@@ -415,7 +411,11 @@ func (p *pyStringNode) Lines() []string {
 }
 
 func (p *pyStringNode) String() string {
-	return strings.Join(p.lines, "")
+	s := ""
+	for _, line := range p.lines {
+		s += line + "\n"
+	}
+	return s
 }
 
 // ----------------------------------------

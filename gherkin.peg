@@ -67,7 +67,7 @@ PyString <-
 PyStringQuote <- '\"' '\"' '\"'
 
 PyStringLine <-
-  < UntilNL NL >
+  < UntilNL > NL
   { p.bufferPyString(buffer[begin:end]) }
 
 Table <-

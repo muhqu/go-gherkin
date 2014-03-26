@@ -174,3 +174,32 @@ func ExampleGherkinPrettyFormater_2() {
 	//      Then the result should be 6
 	//
 }
+
+func ExampleGherkinPrettyFormater_3() {
+
+	fmt := &formater.GherkinPrettyFormater{
+		SkipSteps: true,
+	}
+
+	// unformatedGherkin := `@dead @simple Feature: Dead Simple Calculator ...`
+	gp := gherkin.NewGherkinDOMParser(unformatedGherkin)
+
+	fmt.Format(gp, os.Stdout)
+
+	// Output:
+	// @dead @simple
+	// Feature: Dead Simple Calculator
+	//   Bla Bla
+	//   Bla
+	//
+	//   @wip
+	//   Scenario: Adding 2 numbers
+	//
+	//   @wip @expensive
+	//   Scenario Outline: Simple Math
+	//
+	//   Scenario: Adding 3 numbers
+	//
+	//   Scenario: Follow user actions
+	//
+}
