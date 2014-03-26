@@ -23,6 +23,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/muhqu/go-gherkin"
+	"github.com/muhqu/go-gherkin/formater"
 	"github.com/pebbe/util"
 	"io"
 	"io/ioutil"
@@ -35,6 +36,7 @@ var colors bool
 var colorsYes bool
 var colorsNo bool
 var centerSteps bool
+var skipSteps bool
 var verbose bool
 var inputPath string
 var inputReader io.Reader
@@ -47,6 +49,8 @@ func initFlags() {
 		fmt.Fprintf(os.Stderr, `Usage: %[1]s OPTIONS
 
   -centersteps[=false]   formating option, to control step alignment
+  -nosteps[=false]       omit steps, just print scenario headlines
+  
   -[no]color             explicitly enable/disable colors
   -in PATH               path to input file, defaults to stdin
   -out PATH              path to output file, defaults to stdout
@@ -63,6 +67,7 @@ Examples:
 	flag.BoolVar(&colorsYes, "color", false, "explicitly enable colors")
 	flag.BoolVar(&colorsNo, "nocolor", false, "explicitly disable colors")
 	flag.BoolVar(&centerSteps, "centersteps", false, "formating option, to control step alignment")
+	flag.BoolVar(&skipSteps, "nosteps", false, "omit steps, just print scenario headlines")
 	flag.BoolVar(&verbose, "v", false, "more verbose error messages")
 	flag.StringVar(&inputPath, "in", "", "path to input file")
 	flag.StringVar(&outputPath, "out", "", "path to output file")
@@ -123,9 +128,10 @@ func main() {
 		colors = util.IsTerminal(os.Stdout)
 	}
 
-	formater := &gherkin.GherkinPrettyFormater{
+	fmtr := &formater.GherkinPrettyFormater{
 		AnsiColors:  colors,
 		CenterSteps: centerSteps,
+		SkipSteps:   skipSteps,
 	}
 
 	bytes, _ := ioutil.ReadAll(inputReader)
@@ -140,5 +146,5 @@ func main() {
 		}
 		return
 	}
-	io.Copy(outputWriter, formater.Format(gp))
+	fmtr.Format(gp, outputWriter)
 }

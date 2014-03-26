@@ -15,7 +15,7 @@ And I press the key "<operator>"
 And I press the key "<right>"
 And I press the key "="
 Then the result should be "<result>"
-#Examples: # Examples comment
+Examples: # Examples comment
 | left | operator | right | result |
 | 2 | + | 2 | 4 |
 | 3 | + | 4 | 7 |
