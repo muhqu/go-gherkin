@@ -68,20 +68,23 @@ type ScenarioNode interface {
 	Title() string
 	Steps() []StepNode
 	Tags() []string
+	Comment() CommentNode
 }
 
 type MutableScenarioNode interface {
 	ScenarioNode
 
 	AddStep(step StepNode)
+	SetComment(comment CommentNode)
 }
 
 type abstractScenarioNode struct {
 	abstractNode
 
-	title string
-	steps []StepNode
-	tags  []string
+	title   string
+	steps   []StepNode
+	tags    []string
+	comment CommentNode
 }
 
 func (a *abstractScenarioNode) Title() string {
@@ -93,8 +96,14 @@ func (a *abstractScenarioNode) Steps() []StepNode {
 func (a *abstractScenarioNode) Tags() []string {
 	return a.tags
 }
+func (a *abstractScenarioNode) Comment() CommentNode {
+	return a.comment
+}
 func (a *abstractScenarioNode) AddStep(step StepNode) {
 	a.steps = append(a.steps, step)
+}
+func (a *abstractScenarioNode) SetComment(comment CommentNode) {
+	a.comment = comment
 }
 
 // ----------------------------------------
@@ -116,6 +125,7 @@ type FeatureNode interface {
 	Background() BackgroundNode
 	Scenarios() []ScenarioNode
 	Tags() []string
+	Comment() CommentNode
 }
 
 type MutableFeatureNode interface {
@@ -123,6 +133,7 @@ type MutableFeatureNode interface {
 
 	SetBackground(background BackgroundNode)
 	AddScenario(scenario ScenarioNode)
+	SetComment(comment CommentNode)
 }
 
 func NewMutableFeatureNode(title, description string, tags []string) MutableFeatureNode {
@@ -142,6 +153,7 @@ type featureNode struct {
 	background  BackgroundNode
 	scenarios   []ScenarioNode
 	tags        []string
+	comment     CommentNode
 }
 
 func (f *featureNode) SetBackground(background BackgroundNode) {
@@ -150,6 +162,10 @@ func (f *featureNode) SetBackground(background BackgroundNode) {
 
 func (f *featureNode) AddScenario(scenario ScenarioNode) {
 	f.scenarios = append(f.scenarios, scenario)
+}
+
+func (f *featureNode) SetComment(comment CommentNode) {
+	f.comment = comment
 }
 
 func (f *featureNode) Title() string {
@@ -169,6 +185,9 @@ func (f *featureNode) Background() BackgroundNode {
 }
 func (f *featureNode) Scenarios() []ScenarioNode {
 	return f.scenarios
+}
+func (f *featureNode) Comment() CommentNode {
+	return f.comment
 }
 
 // ----------------------------------------
@@ -225,6 +244,7 @@ type StepNode interface {
 	Text() string
 	PyString() PyStringNode
 	Table() TableNode
+	Comment() CommentNode
 }
 type MutableStepNode interface {
 	StepNode
@@ -235,8 +255,10 @@ type MutableStepNode interface {
 	SetText(string)
 	WithPyString(PyStringNode) MutableStepNode
 	WithTable(TableNode) MutableStepNode
+	WithComment(CommentNode) MutableStepNode
 	SetPyString(PyStringNode)
 	SetTable(TableNode)
+	SetComment(CommentNode)
 }
 
 func NewMutableStepNode(stepType, text string) MutableStepNode {
@@ -254,6 +276,7 @@ type stepNode struct {
 	text     string
 	pyString PyStringNode
 	table    TableNode
+	comment  CommentNode
 }
 
 func (s *stepNode) SetStepType(stepType string) {
@@ -278,6 +301,10 @@ func (s *stepNode) WithTable(table TableNode) MutableStepNode {
 	s.SetTable(table)
 	return s
 }
+func (s *stepNode) WithComment(comment CommentNode) MutableStepNode {
+	s.SetComment(comment)
+	return s
+}
 func (s *stepNode) SetPyString(pyString PyStringNode) {
 	s.pyString = pyString
 	s.table = nil
@@ -285,6 +312,9 @@ func (s *stepNode) SetPyString(pyString PyStringNode) {
 func (s *stepNode) SetTable(table TableNode) {
 	s.table = table
 	s.pyString = nil
+}
+func (s *stepNode) SetComment(comment CommentNode) {
+	s.comment = comment
 }
 
 func (s *stepNode) StepType() string {
@@ -305,6 +335,12 @@ func (s *stepNode) Table() TableNode {
 	}
 	return nil
 }
+func (s *stepNode) Comment() CommentNode {
+	if c := s.comment; c != nil {
+		return c
+	}
+	return nil
+}
 
 // ----------------------------------------
 
@@ -318,6 +354,7 @@ type MutableOutlineNode interface {
 	// MutableScenarioNode
 	AddStep(step StepNode) // stupid
 	SetExamples(examples OutlineExamplesNode)
+	SetComment(comment CommentNode)
 }
 
 func NewMutableOutlineNode(title string, tags []string) MutableOutlineNode {
@@ -469,13 +506,28 @@ func (t *tableNode) Rows() [][]string {
 
 type BlankLineNode interface {
 	NodeInterface // NodeType: BlankLineNodeType
+
+	Comment() CommentNode
+}
+type MutableBlankLineNode interface {
+	SetComment(comment CommentNode)
 }
 
 type blankLineNode struct {
 	abstractNode
+
+	comment CommentNode
 }
 
-func NewBlankLineNode() *blankLineNode {
+func (b *blankLineNode) Comment() CommentNode {
+	return b.comment
+}
+
+func (b *blankLineNode) SetComment(comment CommentNode) {
+	b.comment = comment
+}
+
+func NewBlankLineNode() MutableBlankLineNode {
 	n := &blankLineNode{}
 	n.nodeType = BlankLineNodeType
 	return n
@@ -493,6 +545,10 @@ type commentNode struct {
 	abstractNode
 
 	comment string
+}
+
+func (c *commentNode) Comment() string {
+	return c.comment
 }
 
 func NewCommentNode(comment string) *commentNode {
