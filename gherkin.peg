@@ -17,25 +17,25 @@ Begin <-
 Feature <- 
   Tags 'Feature:' WS* <UntilLineEnd?>{{buf1}} <>{{buf2}} LineEnd
   ( (WS* !('Background:' / 'Scenario:' / 'Scenario Outline:') <UntilLineEnd>{{++buf2}} LineEnd {p.buf2 = p.buf2 + "\n" })+ )?
-  { p.beginFeature(trimWS(p.buf1), trimWSML(p.buf2), p.buftags); p.buftags = nil } 
+  { p.beginFeature(trimWS(trimWS(p.buf1)), trimWSML(p.buf2), p.buftags); p.buftags = nil } 
   ( Background / Scenario / Outline / BlankLine )*
   { p.endFeature() }
 
 Background <- 
   Tags 'Background:' WS* <UntilLineEnd?>{{buf1}} LineEnd
-  { p.beginBackground(p.buf1, p.buftags); p.buftags = nil }
+  { p.beginBackground(trimWS(p.buf1), p.buftags); p.buftags = nil }
   (Step / BlankLine)*
   { p.endBackground() } 
 
 Scenario <- 
   Tags 'Scenario:' WS* <UntilLineEnd?>{{buf1}} LineEnd
-  { p.beginScenario(p.buf1, p.buftags); p.buftags = nil }
+  { p.beginScenario(trimWS(p.buf1), p.buftags); p.buftags = nil }
   (Step / BlankLine)*
   { p.endScenario() }
 
 Outline <- 
   Tags 'Scenario Outline:' WS* <UntilLineEnd?>{{buf1}} LineEnd
-  { p.beginOutline(p.buf1, p.buftags); p.buftags = nil } 
+  { p.beginOutline(trimWS(p.buf1), p.buftags); p.buftags = nil } 
   (Step / BlankLine)*
   OutlineExamples?
   { p.endOutline() } 
@@ -109,7 +109,7 @@ LineComment <-
   { p.bufcmt = buffer[begin:end]; p.triggerComment(p.bufcmt) }
 
 BlankLine <- 
-  ( WS LineEnd / NL )
+  ( WS LineEnd / ( LineComment? NL ) )
   { p.triggerBlankLine() }
 
 
