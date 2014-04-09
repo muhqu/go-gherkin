@@ -25,6 +25,7 @@ type gherkinDOMParser struct {
 	pyStringIndent int
 	pyString       MutablePyStringNode
 	table          MutableTableNode
+	comment        CommentNode
 }
 
 func NewGherkinDOMParser(content string) GherkinDOMParser {
@@ -84,6 +85,8 @@ func (g *gherkinDOMParser) ProcessEvent(event GherkinEvent) {
 
 	case *FeatureEvent:
 		g.feature = NewMutableFeatureNode(e.Title, e.Description, e.Tags)
+		g.feature.SetComment(g.comment)
+		g.comment = nil
 
 	// case *FeatureEndEvent:
 	// 	// do nothing
@@ -92,17 +95,23 @@ func (g *gherkinDOMParser) ProcessEvent(event GherkinEvent) {
 		node := NewMutableBackgroundNode(e.Title, e.Tags)
 		g.scenario = node
 		g.feature.SetBackground(node)
+		node.SetComment(g.comment)
+		g.comment = nil
 
 	case *ScenarioEvent:
 		node := NewMutableScenarioNode(e.Title, e.Tags)
 		g.scenario = node
 		g.feature.AddScenario(node)
+		node.SetComment(g.comment)
+		g.comment = nil
 
 	case *OutlineEvent:
 		node := NewMutableOutlineNode(e.Title, e.Tags)
 		g.scenario = node
 		g.outline = node
 		g.feature.AddScenario(node)
+		node.SetComment(g.comment)
+		g.comment = nil
 
 	case *OutlineExamplesEvent:
 		g.table = nil
@@ -111,16 +120,20 @@ func (g *gherkinDOMParser) ProcessEvent(event GherkinEvent) {
 		examples := NewOutlineExamplesNode(g.table)
 		g.outline.SetExamples(examples)
 		g.table = nil
+		g.comment = nil
 
 	case *BackgroundEndEvent, *ScenarioEndEvent, *OutlineEndEvent:
 		g.scenario = nil
 		g.outline = nil
 		g.table = nil
 		g.pyString = nil
+		g.comment = nil
 
 	case *StepEvent:
 		g.step = NewMutableStepNode(e.StepType, e.Text)
 		g.scenario.AddStep(g.step)
+		g.step.SetComment(g.comment)
+		g.comment = nil
 
 	case *StepEndEvent:
 		if g.pyString != nil {
@@ -131,6 +144,7 @@ func (g *gherkinDOMParser) ProcessEvent(event GherkinEvent) {
 		g.pyString = nil
 		g.table = nil
 		g.step = nil
+		g.comment = nil
 
 	case *TableEvent:
 		g.table = NewMutableTableNode()
@@ -157,11 +171,16 @@ func (g *gherkinDOMParser) ProcessEvent(event GherkinEvent) {
 		// case *PyStringEndEvent:
 		// 	// do nothing
 
-		// case *BlankLineEvent:
-		// 	// TODO: integrate somehow
+	case *BlankLineEvent:
+		node := NewBlankLineNode()
+		node.SetComment(g.comment)
+		if g.scenario != nil {
+			g.scenario.AddBlankLine(node)
+		}
+		g.comment = nil
 
-		// case *CommentEvent:
-		// 	// TODO: integrate somehow
+	case *CommentEvent:
+		g.comment = NewCommentNode(e.Comment)
 
 	}
 }

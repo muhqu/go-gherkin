@@ -69,12 +69,14 @@ type ScenarioNode interface {
 	Steps() []StepNode
 	Tags() []string
 	Comment() CommentNode
+	Lines() []NodeInterface // StepNode | BlankLineNode
 }
 
 type MutableScenarioNode interface {
 	ScenarioNode
 
 	AddStep(step StepNode)
+	AddBlankLine(line BlankLineNode)
 	SetComment(comment CommentNode)
 }
 
@@ -83,6 +85,7 @@ type abstractScenarioNode struct {
 
 	title   string
 	steps   []StepNode
+	lines   []NodeInterface
 	tags    []string
 	comment CommentNode
 }
@@ -93,6 +96,9 @@ func (a *abstractScenarioNode) Title() string {
 func (a *abstractScenarioNode) Steps() []StepNode {
 	return a.steps
 }
+func (a *abstractScenarioNode) Lines() []NodeInterface {
+	return a.lines
+}
 func (a *abstractScenarioNode) Tags() []string {
 	return a.tags
 }
@@ -101,6 +107,10 @@ func (a *abstractScenarioNode) Comment() CommentNode {
 }
 func (a *abstractScenarioNode) AddStep(step StepNode) {
 	a.steps = append(a.steps, step)
+	a.lines = append(a.lines, step)
+}
+func (a *abstractScenarioNode) AddBlankLine(line BlankLineNode) {
+	a.lines = append(a.lines, line)
 }
 func (a *abstractScenarioNode) SetComment(comment CommentNode) {
 	a.comment = comment
@@ -351,8 +361,11 @@ type OutlineNode interface {
 }
 type MutableOutlineNode interface {
 	OutlineNode
-	// MutableScenarioNode
-	AddStep(step StepNode) // stupid
+
+	// MutableScenarioNode can not be imported here
+	AddStep(step StepNode)           // stupid
+	AddBlankLine(line BlankLineNode) // stupid
+
 	SetExamples(examples OutlineExamplesNode)
 	SetComment(comment CommentNode)
 }
@@ -510,6 +523,8 @@ type BlankLineNode interface {
 	Comment() CommentNode
 }
 type MutableBlankLineNode interface {
+	BlankLineNode
+
 	SetComment(comment CommentNode)
 }
 
