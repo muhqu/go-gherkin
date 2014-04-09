@@ -2,6 +2,7 @@ package gherkin_test
 
 import (
 	"fmt"
+
 	"github.com/muhqu/go-gherkin"
 )
 

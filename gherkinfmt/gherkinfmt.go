@@ -22,13 +22,14 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/muhqu/go-gherkin"
-	"github.com/muhqu/go-gherkin/formater"
-	"github.com/pebbe/util"
 	"io"
 	"io/ioutil"
 	"os"
 	"path"
+
+	"github.com/muhqu/go-gherkin"
+	"github.com/muhqu/go-gherkin/formater"
+	"github.com/pebbe/util"
 )
 
 var err error

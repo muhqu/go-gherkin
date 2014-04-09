@@ -2,9 +2,10 @@ package formater_test
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/muhqu/go-gherkin/formater"
 	"github.com/muhqu/go-gherkin/nodes"
-	"os"
 )
 
 func ExampleGherkinPrettyFormater_FormatStep_stepWithTable() {

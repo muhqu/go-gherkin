@@ -1,9 +1,10 @@
 package formater_test
 
 import (
+	"os"
+
 	"github.com/muhqu/go-gherkin"
 	"github.com/muhqu/go-gherkin/formater"
-	"os"
 )
 
 var unformatedGherkin = `@dead @simple Feature: Dead Simple Calculator

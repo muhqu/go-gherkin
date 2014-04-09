@@ -3,12 +3,13 @@ package formater
 
 import (
 	"fmt"
-	"github.com/muhqu/go-gherkin"
-	"github.com/muhqu/go-gherkin/nodes"
 	"io"
 	"strconv"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/muhqu/go-gherkin"
+	"github.com/muhqu/go-gherkin/nodes"
 )
 
 type GherkinFormater interface {

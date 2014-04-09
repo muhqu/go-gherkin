@@ -1,8 +1,6 @@
 package gherkin
 
-import (
-	"github.com/muhqu/go-gherkin/events"
-)
+import "github.com/muhqu/go-gherkin/events"
 
 type GherkinParser interface {
 	WithLogFn(LogFn)

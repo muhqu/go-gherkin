@@ -2,11 +2,12 @@ package gherkin_test
 
 import (
 	"fmt"
+	"strings"
+	"testing"
+
 	"github.com/muhqu/go-gherkin"
 	"github.com/muhqu/go-gherkin/nodes"
 	"github.com/stretchr/testify/assert"
-	"strings"
-	"testing"
 )
 
 func prettyPrintingLogFn(logPrefix string) func(msg string, args ...interface{}) {
