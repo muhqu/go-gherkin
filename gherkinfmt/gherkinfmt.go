@@ -5,10 +5,18 @@ Command gherkinfmt is a command-line gherkin formater and pretty printer.
 Usage
 
 	gherkinfmt OPTIONS
-	  -centersteps[=false]   formating option, to control step alignment
-	  -[no]color             explicitly enable/disable colors
-	  -in PATH               path to input file, defaults to stdin
-	  -out PATH              path to output file, defaults to stdout
+
+	Formating Options
+	  -centersteps[=false]       control step alignment
+	  -nosteps[=false]           hide steps
+	  -nocomments[=false]        hide comments
+	  -noaligncomments[=false]   disable auto alignment of subsequent comments
+	  -mincommentindent=NUM      use min indent for aligned comments
+
+	IO Options
+	  -[no]color                 explicitly enable/disable colors
+	  -in PATH                   path to input file, defaults to stdin
+	  -out PATH                  path to output file, defaults to stdout
 
 Examples
 
@@ -38,6 +46,9 @@ var colorsYes bool
 var colorsNo bool
 var centerSteps bool
 var skipSteps bool
+var skipComments bool
+var noCommentAlign bool
+var commentAlignMinIndent int
 var verbose bool
 var inputPath string
 var inputReader io.Reader
@@ -49,13 +60,18 @@ func initFlags() {
 		self := path.Base(os.Args[0])
 		fmt.Fprintf(os.Stderr, `Usage: %[1]s OPTIONS
 
-  -centersteps[=false]   formating option, to control step alignment
-  -nosteps[=false]       omit steps, just print scenario headlines
-  
-  -[no]color             explicitly enable/disable colors
-  -in PATH               path to input file, defaults to stdin
-  -out PATH              path to output file, defaults to stdout
-  -v                     more verbose error messages
+Formating Options
+  -centersteps[=false]       control step alignment
+  -nosteps[=false]           hide steps
+  -nocomments[=false]        hide comments
+  -noaligncomments[=false]   disable auto alignment of subsequent comments
+  -mincommentindent=NUM      use min indent for aligned comments
+
+IO Options
+  -[no]color                 explicitly enable/disable colors
+  -in PATH                   path to input file, defaults to stdin
+  -out PATH                  path to output file, defaults to stdout
+  -v                         more verbose error messages
 
 Examples:
   
@@ -69,6 +85,9 @@ Examples:
 	flag.BoolVar(&colorsNo, "nocolor", false, "explicitly disable colors")
 	flag.BoolVar(&centerSteps, "centersteps", false, "formating option, to control step alignment")
 	flag.BoolVar(&skipSteps, "nosteps", false, "omit steps, just print scenario headlines")
+	flag.BoolVar(&skipComments, "nocomments", false, "hide comments")
+	flag.BoolVar(&noCommentAlign, "noaligncomments", false, "disable auto alignment of subsequent comments")
+	flag.IntVar(&commentAlignMinIndent, "mincommentindent", 45, "use min indent for aligned comments")
 	flag.BoolVar(&verbose, "v", false, "more verbose error messages")
 	flag.StringVar(&inputPath, "in", "", "path to input file")
 	flag.StringVar(&outputPath, "out", "", "path to output file")
