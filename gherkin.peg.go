@@ -737,28 +737,28 @@ func (p *gherkinPeg) Execute() {
 		case ruleAction3:
 			p.buf2 = p.buf2 + "\n"
 		case ruleAction4:
-			p.beginFeature(trimWS(p.buf1), trimWSML(p.buf2), p.buftags)
+			p.beginFeature(trimWS(trimWS(p.buf1)), trimWSML(p.buf2), p.buftags)
 			p.buftags = nil
 		case ruleAction5:
 			p.endFeature()
 		case ruleAction6:
 			p.buf1 = buffer[begin:end]
 		case ruleAction7:
-			p.beginBackground(p.buf1, p.buftags)
+			p.beginBackground(trimWS(p.buf1), p.buftags)
 			p.buftags = nil
 		case ruleAction8:
 			p.endBackground()
 		case ruleAction9:
 			p.buf1 = buffer[begin:end]
 		case ruleAction10:
-			p.beginScenario(p.buf1, p.buftags)
+			p.beginScenario(trimWS(p.buf1), p.buftags)
 			p.buftags = nil
 		case ruleAction11:
 			p.endScenario()
 		case ruleAction12:
 			p.buf1 = buffer[begin:end]
 		case ruleAction13:
-			p.beginOutline(p.buf1, p.buftags)
+			p.beginOutline(trimWS(p.buf1), p.buftags)
 			p.buftags = nil
 		case ruleAction14:
 			p.endOutline()
@@ -3582,44 +3582,8 @@ func (p *gherkinPeg) Init() {
 				}
 				{
 					position295, tokenIndex295, depth295 := position, tokenIndex, depth
-					{
-						position297 := position
-						depth++
-						if buffer[position] != rune('#') {
-							goto l295
-						}
-						position++
-						{
-							position298 := position
-							depth++
-						l299:
-							{
-								position300, tokenIndex300, depth300 := position, tokenIndex, depth
-								{
-									position301, tokenIndex301, depth301 := position, tokenIndex, depth
-									if buffer[position] != rune('\n') {
-										goto l301
-									}
-									position++
-									goto l300
-								l301:
-									position, tokenIndex, depth = position301, tokenIndex301, depth301
-								}
-								if !matchDot() {
-									goto l300
-								}
-								goto l299
-							l300:
-								position, tokenIndex, depth = position300, tokenIndex300, depth300
-							}
-							depth--
-							add(rulePegText, position298)
-						}
-						{
-							add(ruleAction30, position)
-						}
-						depth--
-						add(ruleLineComment, position297)
+					if !rules[ruleLineComment]() {
+						goto l295
 					}
 					goto l296
 				l295:
@@ -3627,24 +3591,24 @@ func (p *gherkinPeg) Init() {
 				}
 			l296:
 				{
-					position303, tokenIndex303, depth303 := position, tokenIndex, depth
+					position297, tokenIndex297, depth297 := position, tokenIndex, depth
 					if !rules[ruleNL]() {
-						goto l304
+						goto l298
 					}
-					goto l303
-				l304:
-					position, tokenIndex, depth = position303, tokenIndex303, depth303
+					goto l297
+				l298:
+					position, tokenIndex, depth = position297, tokenIndex297, depth297
 					{
-						position305, tokenIndex305, depth305 := position, tokenIndex, depth
+						position299, tokenIndex299, depth299 := position, tokenIndex, depth
 						if !matchDot() {
-							goto l305
+							goto l299
 						}
 						goto l291
-					l305:
-						position, tokenIndex, depth = position305, tokenIndex305, depth305
+					l299:
+						position, tokenIndex, depth = position299, tokenIndex299, depth299
 					}
 				}
-			l303:
+			l297:
 				depth--
 				add(ruleLineEnd, position292)
 			}
@@ -3654,8 +3618,53 @@ func (p *gherkinPeg) Init() {
 			return false
 		},
 		/* 21 LineComment <- <('#' <(!'\n' .)*> Action30)> */
-		nil,
-		/* 22 BlankLine <- <(((WS LineEnd) / NL) Action31)> */
+		func() bool {
+			position300, tokenIndex300, depth300 := position, tokenIndex, depth
+			{
+				position301 := position
+				depth++
+				if buffer[position] != rune('#') {
+					goto l300
+				}
+				position++
+				{
+					position302 := position
+					depth++
+				l303:
+					{
+						position304, tokenIndex304, depth304 := position, tokenIndex, depth
+						{
+							position305, tokenIndex305, depth305 := position, tokenIndex, depth
+							if buffer[position] != rune('\n') {
+								goto l305
+							}
+							position++
+							goto l304
+						l305:
+							position, tokenIndex, depth = position305, tokenIndex305, depth305
+						}
+						if !matchDot() {
+							goto l304
+						}
+						goto l303
+					l304:
+						position, tokenIndex, depth = position304, tokenIndex304, depth304
+					}
+					depth--
+					add(rulePegText, position302)
+				}
+				{
+					add(ruleAction30, position)
+				}
+				depth--
+				add(ruleLineComment, position301)
+			}
+			return true
+		l300:
+			position, tokenIndex, depth = position300, tokenIndex300, depth300
+			return false
+		},
+		/* 22 BlankLine <- <(((WS LineEnd) / (LineComment? NL)) Action31)> */
 		func() bool {
 			position307, tokenIndex307, depth307 := position, tokenIndex, depth
 			{
@@ -3672,6 +3681,16 @@ func (p *gherkinPeg) Init() {
 					goto l309
 				l310:
 					position, tokenIndex, depth = position309, tokenIndex309, depth309
+					{
+						position311, tokenIndex311, depth311 := position, tokenIndex, depth
+						if !rules[ruleLineComment]() {
+							goto l311
+						}
+						goto l312
+					l311:
+						position, tokenIndex, depth = position311, tokenIndex311, depth311
+					}
+				l312:
 					if !rules[ruleNL]() {
 						goto l307
 					}
@@ -3691,102 +3710,102 @@ func (p *gherkinPeg) Init() {
 		/* 23 OS <- <(NL / WS)*> */
 		func() bool {
 			{
-				position313 := position
+				position315 := position
 				depth++
-			l314:
+			l316:
 				{
-					position315, tokenIndex315, depth315 := position, tokenIndex, depth
+					position317, tokenIndex317, depth317 := position, tokenIndex, depth
 					{
-						position316, tokenIndex316, depth316 := position, tokenIndex, depth
+						position318, tokenIndex318, depth318 := position, tokenIndex, depth
 						if !rules[ruleNL]() {
+							goto l319
+						}
+						goto l318
+					l319:
+						position, tokenIndex, depth = position318, tokenIndex318, depth318
+						if !rules[ruleWS]() {
 							goto l317
 						}
-						goto l316
-					l317:
-						position, tokenIndex, depth = position316, tokenIndex316, depth316
-						if !rules[ruleWS]() {
-							goto l315
-						}
 					}
-				l316:
-					goto l314
-				l315:
-					position, tokenIndex, depth = position315, tokenIndex315, depth315
+				l318:
+					goto l316
+				l317:
+					position, tokenIndex, depth = position317, tokenIndex317, depth317
 				}
 				depth--
-				add(ruleOS, position313)
+				add(ruleOS, position315)
 			}
 			return true
 		},
 		/* 24 WS <- <(' ' / '\t')> */
 		func() bool {
-			position318, tokenIndex318, depth318 := position, tokenIndex, depth
+			position320, tokenIndex320, depth320 := position, tokenIndex, depth
 			{
-				position319 := position
+				position321 := position
 				depth++
 				{
-					position320, tokenIndex320, depth320 := position, tokenIndex, depth
+					position322, tokenIndex322, depth322 := position, tokenIndex, depth
 					if buffer[position] != rune(' ') {
-						goto l321
+						goto l323
 					}
 					position++
-					goto l320
-				l321:
-					position, tokenIndex, depth = position320, tokenIndex320, depth320
+					goto l322
+				l323:
+					position, tokenIndex, depth = position322, tokenIndex322, depth322
 					if buffer[position] != rune('\t') {
-						goto l318
+						goto l320
 					}
 					position++
 				}
-			l320:
+			l322:
 				depth--
-				add(ruleWS, position319)
+				add(ruleWS, position321)
 			}
 			return true
-		l318:
-			position, tokenIndex, depth = position318, tokenIndex318, depth318
+		l320:
+			position, tokenIndex, depth = position320, tokenIndex320, depth320
 			return false
 		},
 		/* 25 UntilNL <- <(!'\n' .)*> */
 		nil,
 		/* 26 NL <- <('\n' / '\r' / ('\r' '\n'))> */
 		func() bool {
-			position323, tokenIndex323, depth323 := position, tokenIndex, depth
+			position325, tokenIndex325, depth325 := position, tokenIndex, depth
 			{
-				position324 := position
+				position326 := position
 				depth++
 				{
-					position325, tokenIndex325, depth325 := position, tokenIndex, depth
+					position327, tokenIndex327, depth327 := position, tokenIndex, depth
 					if buffer[position] != rune('\n') {
-						goto l326
+						goto l328
 					}
 					position++
-					goto l325
-				l326:
-					position, tokenIndex, depth = position325, tokenIndex325, depth325
+					goto l327
+				l328:
+					position, tokenIndex, depth = position327, tokenIndex327, depth327
 					if buffer[position] != rune('\r') {
-						goto l327
+						goto l329
 					}
 					position++
-					goto l325
-				l327:
-					position, tokenIndex, depth = position325, tokenIndex325, depth325
+					goto l327
+				l329:
+					position, tokenIndex, depth = position327, tokenIndex327, depth327
 					if buffer[position] != rune('\r') {
-						goto l323
+						goto l325
 					}
 					position++
 					if buffer[position] != rune('\n') {
-						goto l323
+						goto l325
 					}
 					position++
 				}
-			l325:
+			l327:
 				depth--
-				add(ruleNL, position324)
+				add(ruleNL, position326)
 			}
 			return true
-		l323:
-			position, tokenIndex, depth = position323, tokenIndex323, depth323
+		l325:
+			position, tokenIndex, depth = position325, tokenIndex325, depth325
 			return false
 		},
 		nil,
@@ -3798,25 +3817,25 @@ func (p *gherkinPeg) Init() {
 		nil,
 		/* 32 Action3 <- <{p.buf2 = p.buf2 + "\n" }> */
 		nil,
-		/* 33 Action4 <- <{ p.beginFeature(trimWS(p.buf1), trimWSML(p.buf2), p.buftags); p.buftags = nil }> */
+		/* 33 Action4 <- <{ p.beginFeature(trimWS(trimWS(p.buf1)), trimWSML(p.buf2), p.buftags); p.buftags = nil }> */
 		nil,
 		/* 34 Action5 <- <{ p.endFeature() }> */
 		nil,
 		/* 35 Action6 <- <{ p.buf1 = buffer[begin:end] }> */
 		nil,
-		/* 36 Action7 <- <{ p.beginBackground(p.buf1, p.buftags); p.buftags = nil }> */
+		/* 36 Action7 <- <{ p.beginBackground(trimWS(p.buf1), p.buftags); p.buftags = nil }> */
 		nil,
 		/* 37 Action8 <- <{ p.endBackground() }> */
 		nil,
 		/* 38 Action9 <- <{ p.buf1 = buffer[begin:end] }> */
 		nil,
-		/* 39 Action10 <- <{ p.beginScenario(p.buf1, p.buftags); p.buftags = nil }> */
+		/* 39 Action10 <- <{ p.beginScenario(trimWS(p.buf1), p.buftags); p.buftags = nil }> */
 		nil,
 		/* 40 Action11 <- <{ p.endScenario() }> */
 		nil,
 		/* 41 Action12 <- <{ p.buf1 = buffer[begin:end] }> */
 		nil,
-		/* 42 Action13 <- <{ p.beginOutline(p.buf1, p.buftags); p.buftags = nil }> */
+		/* 42 Action13 <- <{ p.beginOutline(trimWS(p.buf1), p.buftags); p.buftags = nil }> */
 		nil,
 		/* 43 Action14 <- <{ p.endOutline() }> */
 		nil,
