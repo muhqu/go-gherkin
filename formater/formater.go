@@ -24,10 +24,16 @@ type GherkinFormater interface {
 // -------------------
 
 type GherkinPrettyFormater struct {
-	AnsiColors  bool
-	CenterSteps bool
-	SkipSteps   bool
+	AnsiColors             bool
+	CenterSteps            bool
+	SkipSteps              bool
+	SkipComments           bool
+	NoAlignComments        bool
+	AlignCommentsMinIndent int
 }
+
+const AlignCommentsMinIndentDefault = 45
+
 type gherkinPrettyPrinter struct {
 	gpf *GherkinPrettyFormater
 	io.Writer
@@ -73,29 +79,73 @@ func (l *lineCommentAlignmentBuffer) Writeln(stringer fmt.Stringer, comments ...
 	}
 }
 func (l *lineCommentAlignmentBuffer) Flush() {
-	if l.maxwidth < l.minwidth {
+	if l.maxwidth > 0 && l.maxwidth < l.minwidth {
 		l.maxwidth = l.minwidth
 	}
 	for _, line := range l.lines {
 		if line.comment == "" {
 			fmt.Fprintf(l.Writer, "%s\n", line.str)
 		} else {
-			fmtStr := fmt.Sprintf("%%s%%-%ds%%s\n", l.maxwidth-line.width)
+			fmtStr := fmt.Sprintf("%%s%%-%ds%%s\n", l.maxwidth-line.width+1)
+			if line.width == 0 {
+				fmtStr = "%s%s%s\n"
+			}
 			fmt.Fprintf(l.Writer, fmtStr, line.str, "", line.comment)
 		}
 	}
 	l.lines = nil
-	l.maxwidth = l.minwidth
+	l.maxwidth = 0
+}
+
+type noCommentLineBuffer struct {
+	io.Writer
+}
+
+func (l *noCommentLineBuffer) Writeln(stringer fmt.Stringer, comments ...fmt.Stringer) {
+	str := stringer.String()
+	fmt.Fprintf(l.Writer, "%s\n", str)
+}
+func (l *noCommentLineBuffer) Flush() {
+}
+
+type noAlignCommentLineBuffer struct {
+	io.Writer
+}
+
+func (l *noAlignCommentLineBuffer) Writeln(stringer fmt.Stringer, comments ...fmt.Stringer) {
+	str := stringer.String()
+	comment := ""
+	for _, value := range comments {
+		comment += value.String()
+	}
+	if comment == "" {
+		fmt.Fprintf(l.Writer, "%s\n", str)
+	} else {
+		fmt.Fprintf(l.Writer, "%s #%s\n", str, comment)
+	}
+
+}
+func (l *noAlignCommentLineBuffer) Flush() {
 }
 
 func newGherkinPrettyPrinter(gpf *GherkinPrettyFormater, out io.Writer) *gherkinPrettyPrinter {
 	g := &gherkinPrettyPrinter{}
 	g.gpf = gpf
 	g.Writer = out
-	l := &lineCommentAlignmentBuffer{}
-	l.Writer = out
-	l.minwidth = 45
-	g.linebuff = l
+	if gpf.SkipComments {
+		g.linebuff = &noCommentLineBuffer{out}
+	} else if gpf.NoAlignComments {
+		g.linebuff = &noAlignCommentLineBuffer{out}
+	} else {
+		l := &lineCommentAlignmentBuffer{}
+		l.Writer = out
+		if gpf.AlignCommentsMinIndent > 0 {
+			l.minwidth = gpf.AlignCommentsMinIndent
+		} else {
+			l.minwidth = AlignCommentsMinIndentDefault
+		}
+		g.linebuff = l
+	}
 	return g
 }
 
@@ -185,7 +235,13 @@ func (g *gherkinPrettyPrinter) FormatFeature(node nodes.FeatureNode) {
 	if len(tags) > 0 {
 		g.write(fmt.Sprintf("%s\n", g.colored(c_CYAN, fmtTags(tags))))
 	}
-	g.write(fmt.Sprintf("%s: %s\n", g.colored(c_BOLD, node.NodeType().String()), node.Title()))
+	g.linebuff.Writeln(g.joinStyledStrings(
+		g.colored(c_BOLD, "%s", "Feature:"),
+		g.colored(c_WHITE, " %s", node.Title()),
+	),
+		g.coloredComment(node.Comment()),
+	)
+	g.linebuff.Flush()
 	if node.Description() != "" {
 		g.write(prefixLines("  ", node.Description()) + "\n")
 	}
@@ -221,8 +277,12 @@ func (g *gherkinPrettyPrinter) FormatScenario(node nodes.ScenarioNode) {
 		g.write(fmt.Sprintf("  %s %s\n", g.colored(c_BOLD, "Scenario Outline:"), g.colored(c_WHITE, node.Title())))
 	}
 	if !g.gpf.SkipSteps {
-		for _, step := range node.Steps() {
-			g.formatStep(step)
+		for _, line := range node.Lines() {
+			if step, ok := line.(nodes.StepNode); ok {
+				g.formatStep(step)
+			} else if blankLine, ok := line.(nodes.BlankLineNode); ok {
+				g.linebuff.Writeln(&styledString{"  ", 0}, g.coloredComment(blankLine.Comment()))
+			}
 		}
 		if node.NodeType() == nodes.OutlineNodeType {
 			g.linebuff.Writeln(g.colored(c_WHITE, "\n    Examples:"))
@@ -240,7 +300,11 @@ func (g *gherkinPrettyPrinter) FormatStep(node nodes.StepNode) {
 
 func (g *gherkinPrettyPrinter) coloredComment(node nodes.CommentNode) *styledString {
 	if node != nil {
-		return g.colored(c_GRAY, " # %s", node.Comment())
+		str := node.Comment()
+		if len(str) > 1 && str[0:1] != " " {
+			str = " " + str
+		}
+		return g.colored(c_GRAY, "#%s", str)
 	} else {
 		return &styledString{}
 	}
