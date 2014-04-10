@@ -305,9 +305,8 @@ func (g *gherkinPrettyPrinter) coloredComment(node nodes.CommentNode) *styledStr
 			str = " " + str
 		}
 		return g.colored(c_GRAY, "#%s", str)
-	} else {
-		return &styledString{}
 	}
+	return &styledString{}
 }
 
 func (g *gherkinPrettyPrinter) formatStep(node nodes.StepNode) {
