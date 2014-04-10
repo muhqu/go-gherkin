@@ -51,7 +51,7 @@ install: version gherkin.peg.go
 test: version gherkin.peg.go
 	go test ./ ./formater ./cmd/gherkinfmt
 
-integration: get-deps clean test
+integration: get-deps clean build test
 	@echo "done: $(GIT_VERSION)" >&2
 
 clean:
