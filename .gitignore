@@ -1,2 +1,2 @@
 *.out
-gherkinfmt/gherkinfmt
+cmd/gherkinfmt/gherkinfmt

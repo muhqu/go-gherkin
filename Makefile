@@ -1,7 +1,9 @@
 
-default: gherkin.peg.go
+default: build
 
-.PHONY: default clean test integration get-deps
+GIT_VERSION=$(shell git describe HEAD 2>/dev/null || git describe --tags HEAD)
+
+.PHONY: default version clean build test install integration get-deps
 
 peg=$(shell which peg \
 	|| ([ -x $(GOPATH)/bin/peg ] && echo $(GOPATH)/bin/peg) \
@@ -34,10 +36,23 @@ gherkin.peg.go: gherkin.peg
 	  > $@
 	rm gherkin.peg.pp gherkin.peg.pp.go
 
-test: gherkin.peg.go
-	go test ./ ./*/
+version: 
+	@echo "version: $(GIT_VERSION)" >&2
+	@cat version.go | sed -e 's/\(VERSION = "\)[^\"]*\("\)/\1'$(GIT_VERSION)'\2/' > version.go.tmp
+	@diff version.go.tmp version.go || (cat version.go.tmp > version.go)
+	@rm version.go.tmp
+
+build: version gherkin.peg.go
+	go build ./ ./formater ./cmd/gherkinfmt
+
+install: version gherkin.peg.go
+	go install ./cmd/gherkinfmt
+
+test: version gherkin.peg.go
+	go test ./ ./formater ./cmd/gherkinfmt
 
 integration: get-deps clean test
+	@echo "done: $(GIT_VERSION)" >&2
 
 clean:
 	- rm gherkin.peg.go

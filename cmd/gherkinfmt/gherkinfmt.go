@@ -18,6 +18,10 @@ Usage
 	  -in PATH                   path to input file, defaults to stdin
 	  -out PATH                  path to output file, defaults to stdout
 
+	Misc Options
+	  -version                   version: ...
+	  -help                      this help
+
 Examples
 
 	$ gherkinfmt -in path/to/some.feature
@@ -32,6 +36,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"path"
 
@@ -50,12 +55,13 @@ var skipComments bool
 var noCommentAlign bool
 var commentAlignMinIndent int
 var verbose bool
+var runVersion bool
 var inputPath string
 var inputReader io.Reader
 var outputPath string
 var outputWriter io.Writer
 
-func initFlags() {
+func init() {
 	flag.Usage = func() {
 		self := path.Base(os.Args[0])
 		fmt.Fprintf(os.Stderr, `Usage: %[1]s OPTIONS
@@ -73,13 +79,17 @@ IO Options
   -out PATH                  path to output file, defaults to stdout
   -v                         more verbose error messages
 
+Misc Options
+  -version                   version: %[2]s
+  -help                      this help
+
 Examples:
   
   $ %[1]s -in path/to/some.feature
 
   $ cat path/to/some.feature | %[1]s -centersteps
 
-`, self)
+`, self, gherkin.VERSION)
 	}
 	flag.BoolVar(&colorsYes, "color", false, "explicitly enable colors")
 	flag.BoolVar(&colorsNo, "nocolor", false, "explicitly disable colors")
@@ -91,7 +101,13 @@ Examples:
 	flag.BoolVar(&verbose, "v", false, "more verbose error messages")
 	flag.StringVar(&inputPath, "in", "", "path to input file")
 	flag.StringVar(&outputPath, "out", "", "path to output file")
+	flag.BoolVar(&runVersion, "version", false, "version: "+gherkin.VERSION)
 	flag.Parse()
+
+	if !verbose {
+		log.SetOutput(ioutil.Discard)
+	}
+	log.Print("Initialized")
 }
 
 func usageErr(err error) {
@@ -107,8 +123,10 @@ func usageErrWithVerboseHint(err error) {
 }
 
 func main() {
-	initFlags()
-
+	if runVersion {
+		fmt.Fprintf(os.Stdout, "%s\n", gherkin.VERSION)
+		return
+	}
 	if inputPath != "" {
 		inputReader, err = os.Open(inputPath)
 		if err != nil {
@@ -149,10 +167,15 @@ func main() {
 	}
 
 	fmtr := &formater.GherkinPrettyFormater{
-		AnsiColors:  colors,
-		CenterSteps: centerSteps,
-		SkipSteps:   skipSteps,
+		AnsiColors:             colors,
+		CenterSteps:            centerSteps,
+		SkipSteps:              skipSteps,
+		SkipComments:           skipComments,
+		NoAlignComments:        noCommentAlign,
+		AlignCommentsMinIndent: commentAlignMinIndent,
 	}
+
+	log.Printf("Formater Settings: %+v", fmtr)
 
 	bytes, _ := ioutil.ReadAll(inputReader)
 	content := string(bytes)
