@@ -56,3 +56,4 @@ integration: get-deps clean build test
 
 clean:
 	- rm gherkin.peg.go
+	go clean
