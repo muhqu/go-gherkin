@@ -1,7 +1,6 @@
 package gherkin
 
 import (
-	/*"bytes"*/
 	"fmt"
 	"math"
 	"sort"
@@ -11,10 +10,10 @@ import (
 const end_symbol rune = 4
 
 /* The rule types inferred from the grammar are below. */
-type rule uint8
+type pegrule uint8
 
 const (
-	ruleUnknown rule = iota
+	ruleUnknown pegrule = iota
 	ruleBegin
 	ruleFeature
 	ruleBackground
@@ -153,33 +152,61 @@ type tokenTree interface {
 	Print()
 	PrintSyntax()
 	PrintSyntaxTree(buffer string)
-	Add(rule rule, begin, end, next, depth int)
+	Add(rule pegrule, begin, end, next, depth int)
 	Expand(index int) tokenTree
 	Tokens() <-chan token32
+	AST() *node32
 	Error() []token32
 	trim(length int)
 }
 
+type node32 struct {
+	token32
+	up, next *node32
+}
+
+func (node *node32) print(depth int, buffer string) {
+	for node != nil {
+		for c := 0; c < depth; c++ {
+			fmt.Printf(" ")
+		}
+		fmt.Printf("\x1B[34m%v\x1B[m %v\n", rul3s[node.pegrule], strconv.Quote(buffer[node.begin:node.end]))
+		if node.up != nil {
+			node.up.print(depth+1, buffer)
+		}
+		node = node.next
+	}
+}
+
+func (ast *node32) Print(buffer string) {
+	ast.print(0, buffer)
+}
+
+type element struct {
+	node *node32
+	down *element
+}
+
 /* ${@} bit structure for abstract syntax tree */
 type token16 struct {
-	rule
+	pegrule
 	begin, end, next int16
 }
 
 func (t *token16) isZero() bool {
-	return t.rule == ruleUnknown && t.begin == 0 && t.end == 0 && t.next == 0
+	return t.pegrule == ruleUnknown && t.begin == 0 && t.end == 0 && t.next == 0
 }
 
 func (t *token16) isParentOf(u token16) bool {
 	return t.begin <= u.begin && t.end >= u.end && t.next > u.next
 }
 
-func (t *token16) GetToken32() token32 {
-	return token32{rule: t.rule, begin: int32(t.begin), end: int32(t.end), next: int32(t.next)}
+func (t *token16) getToken32() token32 {
+	return token32{pegrule: t.pegrule, begin: int32(t.begin), end: int32(t.end), next: int32(t.next)}
 }
 
 func (t *token16) String() string {
-	return fmt.Sprintf("\x1B[34m%v\x1B[m %v %v %v", rul3s[t.rule], t.begin, t.end, t.next)
+	return fmt.Sprintf("\x1B[34m%v\x1B[m %v %v %v", rul3s[t.pegrule], t.begin, t.end, t.next)
 }
 
 type tokens16 struct {
@@ -204,7 +231,7 @@ func (t *tokens16) Order() [][]token16 {
 
 	depths := make([]int16, 1, math.MaxInt16)
 	for i, token := range t.tree {
-		if token.rule == ruleUnknown {
+		if token.pegrule == ruleUnknown {
 			t.tree = t.tree[:i]
 			break
 		}
@@ -238,6 +265,24 @@ type state16 struct {
 	leaf   bool
 }
 
+func (t *tokens16) AST() *node32 {
+	tokens := t.Tokens()
+	stack := &element{node: &node32{token32: <-tokens}}
+	for token := range tokens {
+		if token.begin == token.end {
+			continue
+		}
+		node := &node32{token32: token}
+		for stack != nil && stack.node.begin >= token.begin && stack.node.end <= token.end {
+			stack.node.next = node.up
+			node.up = stack.node
+			stack = stack.down
+		}
+		stack = &element{node: node, down: stack}
+	}
+	return stack.node
+}
+
 func (t *tokens16) PreOrder() (<-chan state16, [][]token16) {
 	s, ordered := make(chan state16, 6), t.Order()
 	go func() {
@@ -248,7 +293,7 @@ func (t *tokens16) PreOrder() (<-chan state16, [][]token16) {
 		depths, state, depth := make([]int16, len(ordered)), 0, 1
 		write := func(t token16, leaf bool) {
 			S := states[state]
-			state, S.rule, S.begin, S.end, S.next, S.leaf = (state+1)%8, t.rule, t.begin, t.end, int16(depth), leaf
+			state, S.pegrule, S.begin, S.end, S.next, S.leaf = (state+1)%8, t.pegrule, t.begin, t.end, int16(depth), leaf
 			copy(S.depths, depths)
 			s <- S
 		}
@@ -264,20 +309,20 @@ func (t *tokens16) PreOrder() (<-chan state16, [][]token16) {
 					if c, j := ordered[depth][i-1], depths[depth-1]; a.isParentOf(c) &&
 						(j < 2 || !ordered[depth-1][j-2].isParentOf(c)) {
 						if c.end != b.begin {
-							write(token16{rule: rule_In_, begin: c.end, end: b.begin}, true)
+							write(token16{pegrule: rule_In_, begin: c.end, end: b.begin}, true)
 						}
 						break
 					}
 				}
 
 				if a.begin < b.begin {
-					write(token16{rule: rulePre_, begin: a.begin, end: b.begin}, true)
+					write(token16{pegrule: rulePre_, begin: a.begin, end: b.begin}, true)
 				}
 				break
 			}
 
 			next := depth + 1
-			if c := ordered[next][depths[next]]; c.rule != ruleUnknown && b.isParentOf(c) {
+			if c := ordered[next][depths[next]]; c.pegrule != ruleUnknown && b.isParentOf(c) {
 				write(b, false)
 				depths[depth]++
 				depth, a, b = next, b, c
@@ -288,11 +333,11 @@ func (t *tokens16) PreOrder() (<-chan state16, [][]token16) {
 			depths[depth]++
 			c, parent := ordered[depth][depths[depth]], true
 			for {
-				if c.rule != ruleUnknown && a.isParentOf(c) {
+				if c.pegrule != ruleUnknown && a.isParentOf(c) {
 					b = c
 					continue depthFirstSearch
 				} else if parent && b.end != a.end {
-					write(token16{rule: rule_Suf, begin: b.end, end: a.end}, true)
+					write(token16{pegrule: rule_Suf, begin: b.end, end: a.end}, true)
 				}
 
 				depth--
@@ -318,15 +363,15 @@ func (t *tokens16) PrintSyntax() {
 		if !token.leaf {
 			fmt.Printf("%v", token.begin)
 			for i, leaf, depths := 0, int(token.next), token.depths; i < leaf; i++ {
-				fmt.Printf(" \x1B[36m%v\x1B[m", rul3s[ordered[i][depths[i]-1].rule])
+				fmt.Printf(" \x1B[36m%v\x1B[m", rul3s[ordered[i][depths[i]-1].pegrule])
 			}
-			fmt.Printf(" \x1B[36m%v\x1B[m\n", rul3s[token.rule])
+			fmt.Printf(" \x1B[36m%v\x1B[m\n", rul3s[token.pegrule])
 		} else if token.begin == token.end {
 			fmt.Printf("%v", token.begin)
 			for i, leaf, depths := 0, int(token.next), token.depths; i < leaf; i++ {
-				fmt.Printf(" \x1B[31m%v\x1B[m", rul3s[ordered[i][depths[i]-1].rule])
+				fmt.Printf(" \x1B[31m%v\x1B[m", rul3s[ordered[i][depths[i]-1].pegrule])
 			}
-			fmt.Printf(" \x1B[31m%v\x1B[m\n", rul3s[token.rule])
+			fmt.Printf(" \x1B[31m%v\x1B[m\n", rul3s[token.pegrule])
 		} else {
 			for c, end := token.begin, token.end; c < end; c++ {
 				if i := int(c); max+1 < i {
@@ -343,9 +388,9 @@ func (t *tokens16) PrintSyntax() {
 				}
 				fmt.Printf("%v", c)
 				for i, leaf, depths := 0, int(token.next), token.depths; i < leaf; i++ {
-					fmt.Printf(" \x1B[34m%v\x1B[m", rul3s[ordered[i][depths[i]-1].rule])
+					fmt.Printf(" \x1B[34m%v\x1B[m", rul3s[ordered[i][depths[i]-1].pegrule])
 				}
-				fmt.Printf(" \x1B[34m%v\x1B[m\n", rul3s[token.rule])
+				fmt.Printf(" \x1B[34m%v\x1B[m\n", rul3s[token.pegrule])
 			}
 			fmt.Printf("\n")
 		}
@@ -358,19 +403,19 @@ func (t *tokens16) PrintSyntaxTree(buffer string) {
 		for c := 0; c < int(token.next); c++ {
 			fmt.Printf(" ")
 		}
-		fmt.Printf("\x1B[34m%v\x1B[m %v\n", rul3s[token.rule], strconv.Quote(buffer[token.begin:token.end]))
+		fmt.Printf("\x1B[34m%v\x1B[m %v\n", rul3s[token.pegrule], strconv.Quote(buffer[token.begin:token.end]))
 	}
 }
 
-func (t *tokens16) Add(rule rule, begin, end, depth, index int) {
-	t.tree[index] = token16{rule: rule, begin: int16(begin), end: int16(end), next: int16(depth)}
+func (t *tokens16) Add(rule pegrule, begin, end, depth, index int) {
+	t.tree[index] = token16{pegrule: rule, begin: int16(begin), end: int16(end), next: int16(depth)}
 }
 
 func (t *tokens16) Tokens() <-chan token32 {
 	s := make(chan token32, 16)
 	go func() {
 		for _, v := range t.tree {
-			s <- v.GetToken32()
+			s <- v.getToken32()
 		}
 		close(s)
 	}()
@@ -384,7 +429,7 @@ func (t *tokens16) Error() []token32 {
 	for i, _ := range tokens {
 		o := ordered[length-i]
 		if len(o) > 1 {
-			tokens[i] = o[len(o)-2].GetToken32()
+			tokens[i] = o[len(o)-2].getToken32()
 		}
 	}
 	return tokens
@@ -392,24 +437,24 @@ func (t *tokens16) Error() []token32 {
 
 /* ${@} bit structure for abstract syntax tree */
 type token32 struct {
-	rule
+	pegrule
 	begin, end, next int32
 }
 
 func (t *token32) isZero() bool {
-	return t.rule == ruleUnknown && t.begin == 0 && t.end == 0 && t.next == 0
+	return t.pegrule == ruleUnknown && t.begin == 0 && t.end == 0 && t.next == 0
 }
 
 func (t *token32) isParentOf(u token32) bool {
 	return t.begin <= u.begin && t.end >= u.end && t.next > u.next
 }
 
-func (t *token32) GetToken32() token32 {
-	return token32{rule: t.rule, begin: int32(t.begin), end: int32(t.end), next: int32(t.next)}
+func (t *token32) getToken32() token32 {
+	return token32{pegrule: t.pegrule, begin: int32(t.begin), end: int32(t.end), next: int32(t.next)}
 }
 
 func (t *token32) String() string {
-	return fmt.Sprintf("\x1B[34m%v\x1B[m %v %v %v", rul3s[t.rule], t.begin, t.end, t.next)
+	return fmt.Sprintf("\x1B[34m%v\x1B[m %v %v %v", rul3s[t.pegrule], t.begin, t.end, t.next)
 }
 
 type tokens32 struct {
@@ -434,7 +479,7 @@ func (t *tokens32) Order() [][]token32 {
 
 	depths := make([]int32, 1, math.MaxInt16)
 	for i, token := range t.tree {
-		if token.rule == ruleUnknown {
+		if token.pegrule == ruleUnknown {
 			t.tree = t.tree[:i]
 			break
 		}
@@ -468,6 +513,24 @@ type state32 struct {
 	leaf   bool
 }
 
+func (t *tokens32) AST() *node32 {
+	tokens := t.Tokens()
+	stack := &element{node: &node32{token32: <-tokens}}
+	for token := range tokens {
+		if token.begin == token.end {
+			continue
+		}
+		node := &node32{token32: token}
+		for stack != nil && stack.node.begin >= token.begin && stack.node.end <= token.end {
+			stack.node.next = node.up
+			node.up = stack.node
+			stack = stack.down
+		}
+		stack = &element{node: node, down: stack}
+	}
+	return stack.node
+}
+
 func (t *tokens32) PreOrder() (<-chan state32, [][]token32) {
 	s, ordered := make(chan state32, 6), t.Order()
 	go func() {
@@ -478,7 +541,7 @@ func (t *tokens32) PreOrder() (<-chan state32, [][]token32) {
 		depths, state, depth := make([]int32, len(ordered)), 0, 1
 		write := func(t token32, leaf bool) {
 			S := states[state]
-			state, S.rule, S.begin, S.end, S.next, S.leaf = (state+1)%8, t.rule, t.begin, t.end, int32(depth), leaf
+			state, S.pegrule, S.begin, S.end, S.next, S.leaf = (state+1)%8, t.pegrule, t.begin, t.end, int32(depth), leaf
 			copy(S.depths, depths)
 			s <- S
 		}
@@ -494,20 +557,20 @@ func (t *tokens32) PreOrder() (<-chan state32, [][]token32) {
 					if c, j := ordered[depth][i-1], depths[depth-1]; a.isParentOf(c) &&
 						(j < 2 || !ordered[depth-1][j-2].isParentOf(c)) {
 						if c.end != b.begin {
-							write(token32{rule: rule_In_, begin: c.end, end: b.begin}, true)
+							write(token32{pegrule: rule_In_, begin: c.end, end: b.begin}, true)
 						}
 						break
 					}
 				}
 
 				if a.begin < b.begin {
-					write(token32{rule: rulePre_, begin: a.begin, end: b.begin}, true)
+					write(token32{pegrule: rulePre_, begin: a.begin, end: b.begin}, true)
 				}
 				break
 			}
 
 			next := depth + 1
-			if c := ordered[next][depths[next]]; c.rule != ruleUnknown && b.isParentOf(c) {
+			if c := ordered[next][depths[next]]; c.pegrule != ruleUnknown && b.isParentOf(c) {
 				write(b, false)
 				depths[depth]++
 				depth, a, b = next, b, c
@@ -518,11 +581,11 @@ func (t *tokens32) PreOrder() (<-chan state32, [][]token32) {
 			depths[depth]++
 			c, parent := ordered[depth][depths[depth]], true
 			for {
-				if c.rule != ruleUnknown && a.isParentOf(c) {
+				if c.pegrule != ruleUnknown && a.isParentOf(c) {
 					b = c
 					continue depthFirstSearch
 				} else if parent && b.end != a.end {
-					write(token32{rule: rule_Suf, begin: b.end, end: a.end}, true)
+					write(token32{pegrule: rule_Suf, begin: b.end, end: a.end}, true)
 				}
 
 				depth--
@@ -548,15 +611,15 @@ func (t *tokens32) PrintSyntax() {
 		if !token.leaf {
 			fmt.Printf("%v", token.begin)
 			for i, leaf, depths := 0, int(token.next), token.depths; i < leaf; i++ {
-				fmt.Printf(" \x1B[36m%v\x1B[m", rul3s[ordered[i][depths[i]-1].rule])
+				fmt.Printf(" \x1B[36m%v\x1B[m", rul3s[ordered[i][depths[i]-1].pegrule])
 			}
-			fmt.Printf(" \x1B[36m%v\x1B[m\n", rul3s[token.rule])
+			fmt.Printf(" \x1B[36m%v\x1B[m\n", rul3s[token.pegrule])
 		} else if token.begin == token.end {
 			fmt.Printf("%v", token.begin)
 			for i, leaf, depths := 0, int(token.next), token.depths; i < leaf; i++ {
-				fmt.Printf(" \x1B[31m%v\x1B[m", rul3s[ordered[i][depths[i]-1].rule])
+				fmt.Printf(" \x1B[31m%v\x1B[m", rul3s[ordered[i][depths[i]-1].pegrule])
 			}
-			fmt.Printf(" \x1B[31m%v\x1B[m\n", rul3s[token.rule])
+			fmt.Printf(" \x1B[31m%v\x1B[m\n", rul3s[token.pegrule])
 		} else {
 			for c, end := token.begin, token.end; c < end; c++ {
 				if i := int(c); max+1 < i {
@@ -573,9 +636,9 @@ func (t *tokens32) PrintSyntax() {
 				}
 				fmt.Printf("%v", c)
 				for i, leaf, depths := 0, int(token.next), token.depths; i < leaf; i++ {
-					fmt.Printf(" \x1B[34m%v\x1B[m", rul3s[ordered[i][depths[i]-1].rule])
+					fmt.Printf(" \x1B[34m%v\x1B[m", rul3s[ordered[i][depths[i]-1].pegrule])
 				}
-				fmt.Printf(" \x1B[34m%v\x1B[m\n", rul3s[token.rule])
+				fmt.Printf(" \x1B[34m%v\x1B[m\n", rul3s[token.pegrule])
 			}
 			fmt.Printf("\n")
 		}
@@ -588,19 +651,19 @@ func (t *tokens32) PrintSyntaxTree(buffer string) {
 		for c := 0; c < int(token.next); c++ {
 			fmt.Printf(" ")
 		}
-		fmt.Printf("\x1B[34m%v\x1B[m %v\n", rul3s[token.rule], strconv.Quote(buffer[token.begin:token.end]))
+		fmt.Printf("\x1B[34m%v\x1B[m %v\n", rul3s[token.pegrule], strconv.Quote(buffer[token.begin:token.end]))
 	}
 }
 
-func (t *tokens32) Add(rule rule, begin, end, depth, index int) {
-	t.tree[index] = token32{rule: rule, begin: int32(begin), end: int32(end), next: int32(depth)}
+func (t *tokens32) Add(rule pegrule, begin, end, depth, index int) {
+	t.tree[index] = token32{pegrule: rule, begin: int32(begin), end: int32(end), next: int32(depth)}
 }
 
 func (t *tokens32) Tokens() <-chan token32 {
 	s := make(chan token32, 16)
 	go func() {
 		for _, v := range t.tree {
-			s <- v.GetToken32()
+			s <- v.getToken32()
 		}
 		close(s)
 	}()
@@ -614,7 +677,7 @@ func (t *tokens32) Error() []token32 {
 	for i, _ := range tokens {
 		o := ordered[length-i]
 		if len(o) > 1 {
-			tokens[i] = o[len(o)-2].GetToken32()
+			tokens[i] = o[len(o)-2].getToken32()
 		}
 	}
 	return tokens
@@ -625,7 +688,7 @@ func (t *tokens16) Expand(index int) tokenTree {
 	if index >= len(tree) {
 		expanded := make([]token32, 2*len(tree))
 		for i, v := range tree {
-			expanded[i] = v.GetToken32()
+			expanded[i] = v.getToken32()
 		}
 		return &tokens32{tree: expanded}
 	}
@@ -705,7 +768,7 @@ func (e *parseError) Error() string {
 	for _, token := range tokens {
 		begin, end := int(token.begin), int(token.end)
 		error += fmt.Sprintf("parse error near \x1B[34m%v\x1B[m (line %v symbol %v - line %v symbol %v):\n%v\n",
-			rul3s[token.rule],
+			rul3s[token.pegrule],
 			translations[begin].line, translations[begin].symbol,
 			translations[end].line, translations[end].symbol,
 			/*strconv.Quote(*/ e.p.Buffer[begin:end] /*)*/)
@@ -725,7 +788,7 @@ func (p *gherkinPeg) Highlighter() {
 func (p *gherkinPeg) Execute() {
 	buffer, begin, end := p.Buffer, 0, 0
 	for token := range p.tokenTree.Tokens() {
-		switch token.rule {
+		switch token.pegrule {
 		case rulePegText:
 			begin, end = int(token.begin), int(token.end)
 		case ruleAction0:
@@ -810,7 +873,7 @@ func (p *gherkinPeg) Init() {
 	}
 
 	var tree tokenTree = &tokens16{tree: make([]token16, math.MaxInt16)}
-	position, depth, tokenIndex, buffer, rules := 0, 0, 0, p.buffer, p.rules
+	position, depth, tokenIndex, buffer, _rules := 0, 0, 0, p.buffer, p.rules
 
 	p.Parse = func(rule ...int) error {
 		r := 1
@@ -830,7 +893,7 @@ func (p *gherkinPeg) Init() {
 		position, tokenIndex, depth = 0, 0, 0
 	}
 
-	add := func(rule rule, begin int) {
+	add := func(rule pegrule, begin int) {
 		if t := tree.Expand(tokenIndex); t != nil {
 			tree = t
 		}
@@ -854,7 +917,7 @@ func (p *gherkinPeg) Init() {
 		return false
 	}*/
 
-	rules = [...]func() bool{
+	_rules = [...]func() bool{
 		nil,
 		/* 0 Begin <- <(Feature? OS !.)> */
 		func() bool {
@@ -867,7 +930,7 @@ func (p *gherkinPeg) Init() {
 					{
 						position4 := position
 						depth++
-						if !rules[ruleTags]() {
+						if !_rules[ruleTags]() {
 							goto l2
 						}
 						if buffer[position] != rune('F') {
@@ -905,7 +968,7 @@ func (p *gherkinPeg) Init() {
 					l5:
 						{
 							position6, tokenIndex6, depth6 := position, tokenIndex, depth
-							if !rules[ruleWS]() {
+							if !_rules[ruleWS]() {
 								goto l6
 							}
 							goto l5
@@ -917,7 +980,7 @@ func (p *gherkinPeg) Init() {
 							depth++
 							{
 								position8, tokenIndex8, depth8 := position, tokenIndex, depth
-								if !rules[ruleUntilLineEnd]() {
+								if !_rules[ruleUntilLineEnd]() {
 									goto l8
 								}
 								goto l9
@@ -940,7 +1003,7 @@ func (p *gherkinPeg) Init() {
 						{
 							add(ruleAction1, position)
 						}
-						if !rules[ruleLineEnd]() {
+						if !_rules[ruleLineEnd]() {
 							goto l2
 						}
 						{
@@ -948,7 +1011,7 @@ func (p *gherkinPeg) Init() {
 						l17:
 							{
 								position18, tokenIndex18, depth18 := position, tokenIndex, depth
-								if !rules[ruleWS]() {
+								if !_rules[ruleWS]() {
 									goto l18
 								}
 								goto l17
@@ -1122,7 +1185,7 @@ func (p *gherkinPeg) Init() {
 							{
 								position23 := position
 								depth++
-								if !rules[ruleUntilLineEnd]() {
+								if !_rules[ruleUntilLineEnd]() {
 									goto l13
 								}
 								depth--
@@ -1131,7 +1194,7 @@ func (p *gherkinPeg) Init() {
 							{
 								add(ruleAction2, position)
 							}
-							if !rules[ruleLineEnd]() {
+							if !_rules[ruleLineEnd]() {
 								goto l13
 							}
 							{
@@ -1143,7 +1206,7 @@ func (p *gherkinPeg) Init() {
 							l26:
 								{
 									position27, tokenIndex27, depth27 := position, tokenIndex, depth
-									if !rules[ruleWS]() {
+									if !_rules[ruleWS]() {
 										goto l27
 									}
 									goto l26
@@ -1317,7 +1380,7 @@ func (p *gherkinPeg) Init() {
 								{
 									position32 := position
 									depth++
-									if !rules[ruleUntilLineEnd]() {
+									if !_rules[ruleUntilLineEnd]() {
 										goto l16
 									}
 									depth--
@@ -1326,7 +1389,7 @@ func (p *gherkinPeg) Init() {
 								{
 									add(ruleAction2, position)
 								}
-								if !rules[ruleLineEnd]() {
+								if !_rules[ruleLineEnd]() {
 									goto l16
 								}
 								{
@@ -1352,7 +1415,7 @@ func (p *gherkinPeg) Init() {
 								{
 									position40 := position
 									depth++
-									if !rules[ruleTags]() {
+									if !_rules[ruleTags]() {
 										goto l39
 									}
 									if buffer[position] != rune('B') {
@@ -1402,7 +1465,7 @@ func (p *gherkinPeg) Init() {
 								l41:
 									{
 										position42, tokenIndex42, depth42 := position, tokenIndex, depth
-										if !rules[ruleWS]() {
+										if !_rules[ruleWS]() {
 											goto l42
 										}
 										goto l41
@@ -1414,7 +1477,7 @@ func (p *gherkinPeg) Init() {
 										depth++
 										{
 											position44, tokenIndex44, depth44 := position, tokenIndex, depth
-											if !rules[ruleUntilLineEnd]() {
+											if !_rules[ruleUntilLineEnd]() {
 												goto l44
 											}
 											goto l45
@@ -1428,7 +1491,7 @@ func (p *gherkinPeg) Init() {
 									{
 										add(ruleAction6, position)
 									}
-									if !rules[ruleLineEnd]() {
+									if !_rules[ruleLineEnd]() {
 										goto l39
 									}
 									{
@@ -1439,13 +1502,13 @@ func (p *gherkinPeg) Init() {
 										position49, tokenIndex49, depth49 := position, tokenIndex, depth
 										{
 											position50, tokenIndex50, depth50 := position, tokenIndex, depth
-											if !rules[ruleStep]() {
+											if !_rules[ruleStep]() {
 												goto l51
 											}
 											goto l50
 										l51:
 											position, tokenIndex, depth = position50, tokenIndex50, depth50
-											if !rules[ruleBlankLine]() {
+											if !_rules[ruleBlankLine]() {
 												goto l49
 											}
 										}
@@ -1466,7 +1529,7 @@ func (p *gherkinPeg) Init() {
 								{
 									position54 := position
 									depth++
-									if !rules[ruleTags]() {
+									if !_rules[ruleTags]() {
 										goto l53
 									}
 									if buffer[position] != rune('S') {
@@ -1508,7 +1571,7 @@ func (p *gherkinPeg) Init() {
 								l55:
 									{
 										position56, tokenIndex56, depth56 := position, tokenIndex, depth
-										if !rules[ruleWS]() {
+										if !_rules[ruleWS]() {
 											goto l56
 										}
 										goto l55
@@ -1520,7 +1583,7 @@ func (p *gherkinPeg) Init() {
 										depth++
 										{
 											position58, tokenIndex58, depth58 := position, tokenIndex, depth
-											if !rules[ruleUntilLineEnd]() {
+											if !_rules[ruleUntilLineEnd]() {
 												goto l58
 											}
 											goto l59
@@ -1534,7 +1597,7 @@ func (p *gherkinPeg) Init() {
 									{
 										add(ruleAction9, position)
 									}
-									if !rules[ruleLineEnd]() {
+									if !_rules[ruleLineEnd]() {
 										goto l53
 									}
 									{
@@ -1545,13 +1608,13 @@ func (p *gherkinPeg) Init() {
 										position63, tokenIndex63, depth63 := position, tokenIndex, depth
 										{
 											position64, tokenIndex64, depth64 := position, tokenIndex, depth
-											if !rules[ruleStep]() {
+											if !_rules[ruleStep]() {
 												goto l65
 											}
 											goto l64
 										l65:
 											position, tokenIndex, depth = position64, tokenIndex64, depth64
-											if !rules[ruleBlankLine]() {
+											if !_rules[ruleBlankLine]() {
 												goto l63
 											}
 										}
@@ -1572,7 +1635,7 @@ func (p *gherkinPeg) Init() {
 								{
 									position68 := position
 									depth++
-									if !rules[ruleTags]() {
+									if !_rules[ruleTags]() {
 										goto l67
 									}
 									if buffer[position] != rune('S') {
@@ -1646,7 +1709,7 @@ func (p *gherkinPeg) Init() {
 								l69:
 									{
 										position70, tokenIndex70, depth70 := position, tokenIndex, depth
-										if !rules[ruleWS]() {
+										if !_rules[ruleWS]() {
 											goto l70
 										}
 										goto l69
@@ -1658,7 +1721,7 @@ func (p *gherkinPeg) Init() {
 										depth++
 										{
 											position72, tokenIndex72, depth72 := position, tokenIndex, depth
-											if !rules[ruleUntilLineEnd]() {
+											if !_rules[ruleUntilLineEnd]() {
 												goto l72
 											}
 											goto l73
@@ -1672,7 +1735,7 @@ func (p *gherkinPeg) Init() {
 									{
 										add(ruleAction12, position)
 									}
-									if !rules[ruleLineEnd]() {
+									if !_rules[ruleLineEnd]() {
 										goto l67
 									}
 									{
@@ -1683,13 +1746,13 @@ func (p *gherkinPeg) Init() {
 										position77, tokenIndex77, depth77 := position, tokenIndex, depth
 										{
 											position78, tokenIndex78, depth78 := position, tokenIndex, depth
-											if !rules[ruleStep]() {
+											if !_rules[ruleStep]() {
 												goto l79
 											}
 											goto l78
 										l79:
 											position, tokenIndex, depth = position78, tokenIndex78, depth78
-											if !rules[ruleBlankLine]() {
+											if !_rules[ruleBlankLine]() {
 												goto l77
 											}
 										}
@@ -1703,7 +1766,7 @@ func (p *gherkinPeg) Init() {
 										{
 											position82 := position
 											depth++
-											if !rules[ruleOS]() {
+											if !_rules[ruleOS]() {
 												goto l80
 											}
 											if buffer[position] != rune('E') {
@@ -1742,7 +1805,7 @@ func (p *gherkinPeg) Init() {
 												goto l80
 											}
 											position++
-											if !rules[ruleLineEnd]() {
+											if !_rules[ruleLineEnd]() {
 												goto l80
 											}
 											{
@@ -1750,7 +1813,7 @@ func (p *gherkinPeg) Init() {
 											}
 											{
 												position84, tokenIndex84, depth84 := position, tokenIndex, depth
-												if !rules[ruleTable]() {
+												if !_rules[ruleTable]() {
 													goto l84
 												}
 												goto l85
@@ -1778,7 +1841,7 @@ func (p *gherkinPeg) Init() {
 								goto l38
 							l67:
 								position, tokenIndex, depth = position38, tokenIndex38, depth38
-								if !rules[ruleBlankLine]() {
+								if !_rules[ruleBlankLine]() {
 									goto l37
 								}
 							}
@@ -1798,7 +1861,7 @@ func (p *gherkinPeg) Init() {
 					position, tokenIndex, depth = position2, tokenIndex2, depth2
 				}
 			l3:
-				if !rules[ruleOS]() {
+				if !_rules[ruleOS]() {
 					goto l0
 				}
 				{
@@ -1837,7 +1900,7 @@ func (p *gherkinPeg) Init() {
 			l97:
 				{
 					position98, tokenIndex98, depth98 := position, tokenIndex, depth
-					if !rules[ruleWS]() {
+					if !_rules[ruleWS]() {
 						goto l98
 					}
 					goto l97
@@ -1957,7 +2020,7 @@ func (p *gherkinPeg) Init() {
 			l102:
 				{
 					position103, tokenIndex103, depth103 := position, tokenIndex, depth
-					if !rules[ruleWS]() {
+					if !_rules[ruleWS]() {
 						goto l103
 					}
 					goto l102
@@ -1967,7 +2030,7 @@ func (p *gherkinPeg) Init() {
 				{
 					position104 := position
 					depth++
-					if !rules[ruleUntilLineEnd]() {
+					if !_rules[ruleUntilLineEnd]() {
 						goto l95
 					}
 					depth--
@@ -1976,7 +2039,7 @@ func (p *gherkinPeg) Init() {
 				{
 					add(ruleAction18, position)
 				}
-				if !rules[ruleLineEnd]() {
+				if !_rules[ruleLineEnd]() {
 					goto l95
 				}
 				{
@@ -1989,7 +2052,7 @@ func (p *gherkinPeg) Init() {
 						depth++
 						{
 							position110, tokenIndex110, depth110 := position, tokenIndex, depth
-							if !rules[ruleTable]() {
+							if !_rules[ruleTable]() {
 								goto l111
 							}
 							goto l110
@@ -2004,14 +2067,14 @@ func (p *gherkinPeg) Init() {
 								l115:
 									{
 										position116, tokenIndex116, depth116 := position, tokenIndex, depth
-										if !rules[ruleWS]() {
+										if !_rules[ruleWS]() {
 											goto l116
 										}
 										goto l115
 									l116:
 										position, tokenIndex, depth = position116, tokenIndex116, depth116
 									}
-									if !rules[ruleNL]() {
+									if !_rules[ruleNL]() {
 										goto l114
 									}
 									goto l113
@@ -2024,7 +2087,7 @@ func (p *gherkinPeg) Init() {
 								l118:
 									{
 										position119, tokenIndex119, depth119 := position, tokenIndex, depth
-										if !rules[ruleWS]() {
+										if !_rules[ruleWS]() {
 											goto l119
 										}
 										goto l118
@@ -2034,10 +2097,10 @@ func (p *gherkinPeg) Init() {
 									depth--
 									add(rulePegText, position117)
 								}
-								if !rules[rulePyStringQuote]() {
+								if !_rules[rulePyStringQuote]() {
 									goto l107
 								}
-								if !rules[ruleNL]() {
+								if !_rules[ruleNL]() {
 									goto l107
 								}
 								{
@@ -2051,14 +2114,14 @@ func (p *gherkinPeg) Init() {
 									l124:
 										{
 											position125, tokenIndex125, depth125 := position, tokenIndex, depth
-											if !rules[ruleWS]() {
+											if !_rules[ruleWS]() {
 												goto l125
 											}
 											goto l124
 										l125:
 											position, tokenIndex, depth = position125, tokenIndex125, depth125
 										}
-										if !rules[rulePyStringQuote]() {
+										if !_rules[rulePyStringQuote]() {
 											goto l123
 										}
 										goto l122
@@ -2100,7 +2163,7 @@ func (p *gherkinPeg) Init() {
 											depth--
 											add(rulePegText, position127)
 										}
-										if !rules[ruleNL]() {
+										if !_rules[ruleNL]() {
 											goto l122
 										}
 										{
@@ -2116,17 +2179,17 @@ func (p *gherkinPeg) Init() {
 							l133:
 								{
 									position134, tokenIndex134, depth134 := position, tokenIndex, depth
-									if !rules[ruleWS]() {
+									if !_rules[ruleWS]() {
 										goto l134
 									}
 									goto l133
 								l134:
 									position, tokenIndex, depth = position134, tokenIndex134, depth134
 								}
-								if !rules[rulePyStringQuote]() {
+								if !_rules[rulePyStringQuote]() {
 									goto l107
 								}
-								if !rules[ruleLineEnd]() {
+								if !_rules[ruleLineEnd]() {
 									goto l107
 								}
 								{
@@ -2203,7 +2266,7 @@ func (p *gherkinPeg) Init() {
 					{
 						add(ruleAction26, position)
 					}
-					if !rules[ruleOS]() {
+					if !_rules[ruleOS]() {
 						goto l142
 					}
 					if buffer[position] != rune('|') {
@@ -2397,7 +2460,7 @@ func (p *gherkinPeg) Init() {
 					l150:
 						position, tokenIndex, depth = position150, tokenIndex150, depth150
 					}
-					if !rules[ruleLineEnd]() {
+					if !_rules[ruleLineEnd]() {
 						goto l142
 					}
 					{
@@ -2415,7 +2478,7 @@ func (p *gherkinPeg) Init() {
 						{
 							add(ruleAction26, position)
 						}
-						if !rules[ruleOS]() {
+						if !_rules[ruleOS]() {
 							goto l146
 						}
 						if buffer[position] != rune('|') {
@@ -2609,7 +2672,7 @@ func (p *gherkinPeg) Init() {
 						l173:
 							position, tokenIndex, depth = position173, tokenIndex173, depth173
 						}
-						if !rules[ruleLineEnd]() {
+						if !_rules[ruleLineEnd]() {
 							goto l146
 						}
 						{
@@ -2649,7 +2712,7 @@ func (p *gherkinPeg) Init() {
 					{
 						position202 := position
 						depth++
-						if !rules[ruleOS]() {
+						if !_rules[ruleOS]() {
 							goto l199
 						}
 						if buffer[position] != rune('@') {
@@ -2787,7 +2850,7 @@ func (p *gherkinPeg) Init() {
 						{
 							position212 := position
 							depth++
-							if !rules[ruleOS]() {
+							if !_rules[ruleOS]() {
 								goto l201
 							}
 							if buffer[position] != rune('@') {
@@ -2926,7 +2989,7 @@ func (p *gherkinPeg) Init() {
 				l222:
 					{
 						position223, tokenIndex223, depth223 := position, tokenIndex, depth
-						if !rules[ruleWS]() {
+						if !_rules[ruleWS]() {
 							goto l223
 						}
 						goto l222
@@ -2935,7 +2998,7 @@ func (p *gherkinPeg) Init() {
 					}
 					{
 						position224, tokenIndex224, depth224 := position, tokenIndex, depth
-						if !rules[ruleLineEnd]() {
+						if !_rules[ruleLineEnd]() {
 							goto l224
 						}
 						goto l225
@@ -2947,7 +3010,7 @@ func (p *gherkinPeg) Init() {
 				l199:
 					position, tokenIndex, depth = position199, tokenIndex199, depth199
 				}
-				if !rules[ruleOS]() {
+				if !_rules[ruleOS]() {
 					goto l196
 				}
 				depth--
@@ -2983,7 +3046,7 @@ func (p *gherkinPeg) Init() {
 			position, tokenIndex, depth = position228, tokenIndex228, depth228
 			return false
 		},
-		/* 18 QuotedString <- <('"' (EscapedChar / (!((&('"') '"') | (&('\\') '\\') | (&('\n') '\n')) .)+)+ '"')> */
+		/* 18 QuotedString <- <('"' (EscapedChar / (!((&('"') '"') | (&('\\') '\\') | (&('\n') '\n')) .)+)* '"')> */
 		nil,
 		/* 19 UntilLineEnd <- <(EscapedChar / (!((&('#') '#') | (&('"') '"') | (&('\\') '\\') | (&('\n') '\n')) .)+ / QuotedString)+> */
 		func() bool {
@@ -2993,7 +3056,7 @@ func (p *gherkinPeg) Init() {
 				depth++
 				{
 					position235, tokenIndex235, depth235 := position, tokenIndex, depth
-					if !rules[ruleEscapedChar]() {
+					if !_rules[ruleEscapedChar]() {
 						goto l236
 					}
 					goto l235
@@ -3092,117 +3155,36 @@ func (p *gherkinPeg) Init() {
 							goto l231
 						}
 						position++
-						{
-							position247, tokenIndex247, depth247 := position, tokenIndex, depth
-							if !rules[ruleEscapedChar]() {
-								goto l248
-							}
-							goto l247
-						l248:
-							position, tokenIndex, depth = position247, tokenIndex247, depth247
-							{
-								position251, tokenIndex251, depth251 := position, tokenIndex, depth
-								{
-									switch buffer[position] {
-									case '"':
-										if buffer[position] != rune('"') {
-											goto l251
-										}
-										position++
-										break
-									case '\\':
-										if buffer[position] != rune('\\') {
-											goto l251
-										}
-										position++
-										break
-									default:
-										if buffer[position] != rune('\n') {
-											goto l251
-										}
-										position++
-										break
-									}
-								}
-
-								goto l231
-							l251:
-								position, tokenIndex, depth = position251, tokenIndex251, depth251
-							}
-							if !matchDot() {
-								goto l231
-							}
-						l249:
-							{
-								position250, tokenIndex250, depth250 := position, tokenIndex, depth
-								{
-									position253, tokenIndex253, depth253 := position, tokenIndex, depth
-									{
-										switch buffer[position] {
-										case '"':
-											if buffer[position] != rune('"') {
-												goto l253
-											}
-											position++
-											break
-										case '\\':
-											if buffer[position] != rune('\\') {
-												goto l253
-											}
-											position++
-											break
-										default:
-											if buffer[position] != rune('\n') {
-												goto l253
-											}
-											position++
-											break
-										}
-									}
-
-									goto l250
-								l253:
-									position, tokenIndex, depth = position253, tokenIndex253, depth253
-								}
-								if !matchDot() {
-									goto l250
-								}
-								goto l249
-							l250:
-								position, tokenIndex, depth = position250, tokenIndex250, depth250
-							}
-						}
-					l247:
 					l245:
 						{
 							position246, tokenIndex246, depth246 := position, tokenIndex, depth
 							{
-								position255, tokenIndex255, depth255 := position, tokenIndex, depth
-								if !rules[ruleEscapedChar]() {
-									goto l256
+								position247, tokenIndex247, depth247 := position, tokenIndex, depth
+								if !_rules[ruleEscapedChar]() {
+									goto l248
 								}
-								goto l255
-							l256:
-								position, tokenIndex, depth = position255, tokenIndex255, depth255
+								goto l247
+							l248:
+								position, tokenIndex, depth = position247, tokenIndex247, depth247
 								{
-									position259, tokenIndex259, depth259 := position, tokenIndex, depth
+									position251, tokenIndex251, depth251 := position, tokenIndex, depth
 									{
 										switch buffer[position] {
 										case '"':
 											if buffer[position] != rune('"') {
-												goto l259
+												goto l251
 											}
 											position++
 											break
 										case '\\':
 											if buffer[position] != rune('\\') {
-												goto l259
+												goto l251
 											}
 											position++
 											break
 										default:
 											if buffer[position] != rune('\n') {
-												goto l259
+												goto l251
 											}
 											position++
 											break
@@ -3210,53 +3192,53 @@ func (p *gherkinPeg) Init() {
 									}
 
 									goto l246
-								l259:
-									position, tokenIndex, depth = position259, tokenIndex259, depth259
+								l251:
+									position, tokenIndex, depth = position251, tokenIndex251, depth251
 								}
 								if !matchDot() {
 									goto l246
 								}
-							l257:
+							l249:
 								{
-									position258, tokenIndex258, depth258 := position, tokenIndex, depth
+									position250, tokenIndex250, depth250 := position, tokenIndex, depth
 									{
-										position261, tokenIndex261, depth261 := position, tokenIndex, depth
+										position253, tokenIndex253, depth253 := position, tokenIndex, depth
 										{
 											switch buffer[position] {
 											case '"':
 												if buffer[position] != rune('"') {
-													goto l261
+													goto l253
 												}
 												position++
 												break
 											case '\\':
 												if buffer[position] != rune('\\') {
-													goto l261
+													goto l253
 												}
 												position++
 												break
 											default:
 												if buffer[position] != rune('\n') {
-													goto l261
+													goto l253
 												}
 												position++
 												break
 											}
 										}
 
-										goto l258
-									l261:
-										position, tokenIndex, depth = position261, tokenIndex261, depth261
+										goto l250
+									l253:
+										position, tokenIndex, depth = position253, tokenIndex253, depth253
 									}
 									if !matchDot() {
-										goto l258
+										goto l250
 									}
-									goto l257
-								l258:
-									position, tokenIndex, depth = position258, tokenIndex258, depth258
+									goto l249
+								l250:
+									position, tokenIndex, depth = position250, tokenIndex250, depth250
 								}
 							}
-						l255:
+						l247:
 							goto l245
 						l246:
 							position, tokenIndex, depth = position246, tokenIndex246, depth246
@@ -3274,284 +3256,203 @@ func (p *gherkinPeg) Init() {
 				{
 					position234, tokenIndex234, depth234 := position, tokenIndex, depth
 					{
-						position263, tokenIndex263, depth263 := position, tokenIndex, depth
-						if !rules[ruleEscapedChar]() {
-							goto l264
+						position255, tokenIndex255, depth255 := position, tokenIndex, depth
+						if !_rules[ruleEscapedChar]() {
+							goto l256
 						}
-						goto l263
-					l264:
-						position, tokenIndex, depth = position263, tokenIndex263, depth263
+						goto l255
+					l256:
+						position, tokenIndex, depth = position255, tokenIndex255, depth255
 						{
-							position268, tokenIndex268, depth268 := position, tokenIndex, depth
+							position260, tokenIndex260, depth260 := position, tokenIndex, depth
 							{
 								switch buffer[position] {
 								case '#':
 									if buffer[position] != rune('#') {
-										goto l268
+										goto l260
 									}
 									position++
 									break
 								case '"':
 									if buffer[position] != rune('"') {
-										goto l268
+										goto l260
 									}
 									position++
 									break
 								case '\\':
 									if buffer[position] != rune('\\') {
-										goto l268
+										goto l260
 									}
 									position++
 									break
 								default:
 									if buffer[position] != rune('\n') {
-										goto l268
+										goto l260
 									}
 									position++
 									break
 								}
 							}
 
-							goto l265
-						l268:
-							position, tokenIndex, depth = position268, tokenIndex268, depth268
+							goto l257
+						l260:
+							position, tokenIndex, depth = position260, tokenIndex260, depth260
 						}
 						if !matchDot() {
-							goto l265
+							goto l257
 						}
-					l266:
+					l258:
 						{
-							position267, tokenIndex267, depth267 := position, tokenIndex, depth
+							position259, tokenIndex259, depth259 := position, tokenIndex, depth
 							{
-								position270, tokenIndex270, depth270 := position, tokenIndex, depth
+								position262, tokenIndex262, depth262 := position, tokenIndex, depth
 								{
 									switch buffer[position] {
 									case '#':
 										if buffer[position] != rune('#') {
-											goto l270
+											goto l262
 										}
 										position++
 										break
 									case '"':
 										if buffer[position] != rune('"') {
-											goto l270
+											goto l262
 										}
 										position++
 										break
 									case '\\':
 										if buffer[position] != rune('\\') {
-											goto l270
+											goto l262
 										}
 										position++
 										break
 									default:
 										if buffer[position] != rune('\n') {
-											goto l270
+											goto l262
 										}
 										position++
 										break
 									}
 								}
 
-								goto l267
-							l270:
-								position, tokenIndex, depth = position270, tokenIndex270, depth270
+								goto l259
+							l262:
+								position, tokenIndex, depth = position262, tokenIndex262, depth262
 							}
 							if !matchDot() {
-								goto l267
+								goto l259
 							}
-							goto l266
-						l267:
-							position, tokenIndex, depth = position267, tokenIndex267, depth267
+							goto l258
+						l259:
+							position, tokenIndex, depth = position259, tokenIndex259, depth259
 						}
-						goto l263
-					l265:
-						position, tokenIndex, depth = position263, tokenIndex263, depth263
+						goto l255
+					l257:
+						position, tokenIndex, depth = position255, tokenIndex255, depth255
 						{
-							position272 := position
+							position264 := position
 							depth++
 							if buffer[position] != rune('"') {
 								goto l234
 							}
 							position++
+						l265:
 							{
-								position275, tokenIndex275, depth275 := position, tokenIndex, depth
-								if !rules[ruleEscapedChar]() {
-									goto l276
-								}
-								goto l275
-							l276:
-								position, tokenIndex, depth = position275, tokenIndex275, depth275
+								position266, tokenIndex266, depth266 := position, tokenIndex, depth
 								{
-									position279, tokenIndex279, depth279 := position, tokenIndex, depth
-									{
-										switch buffer[position] {
-										case '"':
-											if buffer[position] != rune('"') {
-												goto l279
-											}
-											position++
-											break
-										case '\\':
-											if buffer[position] != rune('\\') {
-												goto l279
-											}
-											position++
-											break
-										default:
-											if buffer[position] != rune('\n') {
-												goto l279
-											}
-											position++
-											break
-										}
+									position267, tokenIndex267, depth267 := position, tokenIndex, depth
+									if !_rules[ruleEscapedChar]() {
+										goto l268
 									}
-
-									goto l234
-								l279:
-									position, tokenIndex, depth = position279, tokenIndex279, depth279
-								}
-								if !matchDot() {
-									goto l234
-								}
-							l277:
-								{
-									position278, tokenIndex278, depth278 := position, tokenIndex, depth
+									goto l267
+								l268:
+									position, tokenIndex, depth = position267, tokenIndex267, depth267
 									{
-										position281, tokenIndex281, depth281 := position, tokenIndex, depth
+										position271, tokenIndex271, depth271 := position, tokenIndex, depth
 										{
 											switch buffer[position] {
 											case '"':
 												if buffer[position] != rune('"') {
-													goto l281
+													goto l271
 												}
 												position++
 												break
 											case '\\':
 												if buffer[position] != rune('\\') {
-													goto l281
+													goto l271
 												}
 												position++
 												break
 											default:
 												if buffer[position] != rune('\n') {
-													goto l281
+													goto l271
 												}
 												position++
 												break
 											}
 										}
 
-										goto l278
-									l281:
-										position, tokenIndex, depth = position281, tokenIndex281, depth281
+										goto l266
+									l271:
+										position, tokenIndex, depth = position271, tokenIndex271, depth271
 									}
 									if !matchDot() {
-										goto l278
+										goto l266
 									}
-									goto l277
-								l278:
-									position, tokenIndex, depth = position278, tokenIndex278, depth278
-								}
-							}
-						l275:
-						l273:
-							{
-								position274, tokenIndex274, depth274 := position, tokenIndex, depth
-								{
-									position283, tokenIndex283, depth283 := position, tokenIndex, depth
-									if !rules[ruleEscapedChar]() {
-										goto l284
-									}
-									goto l283
-								l284:
-									position, tokenIndex, depth = position283, tokenIndex283, depth283
+								l269:
 									{
-										position287, tokenIndex287, depth287 := position, tokenIndex, depth
+										position270, tokenIndex270, depth270 := position, tokenIndex, depth
 										{
-											switch buffer[position] {
-											case '"':
-												if buffer[position] != rune('"') {
-													goto l287
-												}
-												position++
-												break
-											case '\\':
-												if buffer[position] != rune('\\') {
-													goto l287
-												}
-												position++
-												break
-											default:
-												if buffer[position] != rune('\n') {
-													goto l287
-												}
-												position++
-												break
-											}
-										}
-
-										goto l274
-									l287:
-										position, tokenIndex, depth = position287, tokenIndex287, depth287
-									}
-									if !matchDot() {
-										goto l274
-									}
-								l285:
-									{
-										position286, tokenIndex286, depth286 := position, tokenIndex, depth
-										{
-											position289, tokenIndex289, depth289 := position, tokenIndex, depth
+											position273, tokenIndex273, depth273 := position, tokenIndex, depth
 											{
 												switch buffer[position] {
 												case '"':
 													if buffer[position] != rune('"') {
-														goto l289
+														goto l273
 													}
 													position++
 													break
 												case '\\':
 													if buffer[position] != rune('\\') {
-														goto l289
+														goto l273
 													}
 													position++
 													break
 												default:
 													if buffer[position] != rune('\n') {
-														goto l289
+														goto l273
 													}
 													position++
 													break
 												}
 											}
 
-											goto l286
-										l289:
-											position, tokenIndex, depth = position289, tokenIndex289, depth289
+											goto l270
+										l273:
+											position, tokenIndex, depth = position273, tokenIndex273, depth273
 										}
 										if !matchDot() {
-											goto l286
+											goto l270
 										}
-										goto l285
-									l286:
-										position, tokenIndex, depth = position286, tokenIndex286, depth286
+										goto l269
+									l270:
+										position, tokenIndex, depth = position270, tokenIndex270, depth270
 									}
 								}
-							l283:
-								goto l273
-							l274:
-								position, tokenIndex, depth = position274, tokenIndex274, depth274
+							l267:
+								goto l265
+							l266:
+								position, tokenIndex, depth = position266, tokenIndex266, depth266
 							}
 							if buffer[position] != rune('"') {
 								goto l234
 							}
 							position++
 							depth--
-							add(ruleQuotedString, position272)
+							add(ruleQuotedString, position264)
 						}
 					}
-				l263:
+				l255:
 					goto l233
 				l234:
 					position, tokenIndex, depth = position234, tokenIndex234, depth234
@@ -3566,246 +3467,246 @@ func (p *gherkinPeg) Init() {
 		},
 		/* 20 LineEnd <- <(WS* LineComment? (NL / !.))> */
 		func() bool {
+			position275, tokenIndex275, depth275 := position, tokenIndex, depth
+			{
+				position276 := position
+				depth++
+			l277:
+				{
+					position278, tokenIndex278, depth278 := position, tokenIndex, depth
+					if !_rules[ruleWS]() {
+						goto l278
+					}
+					goto l277
+				l278:
+					position, tokenIndex, depth = position278, tokenIndex278, depth278
+				}
+				{
+					position279, tokenIndex279, depth279 := position, tokenIndex, depth
+					if !_rules[ruleLineComment]() {
+						goto l279
+					}
+					goto l280
+				l279:
+					position, tokenIndex, depth = position279, tokenIndex279, depth279
+				}
+			l280:
+				{
+					position281, tokenIndex281, depth281 := position, tokenIndex, depth
+					if !_rules[ruleNL]() {
+						goto l282
+					}
+					goto l281
+				l282:
+					position, tokenIndex, depth = position281, tokenIndex281, depth281
+					{
+						position283, tokenIndex283, depth283 := position, tokenIndex, depth
+						if !matchDot() {
+							goto l283
+						}
+						goto l275
+					l283:
+						position, tokenIndex, depth = position283, tokenIndex283, depth283
+					}
+				}
+			l281:
+				depth--
+				add(ruleLineEnd, position276)
+			}
+			return true
+		l275:
+			position, tokenIndex, depth = position275, tokenIndex275, depth275
+			return false
+		},
+		/* 21 LineComment <- <('#' <(!'\n' .)*> Action30)> */
+		func() bool {
+			position284, tokenIndex284, depth284 := position, tokenIndex, depth
+			{
+				position285 := position
+				depth++
+				if buffer[position] != rune('#') {
+					goto l284
+				}
+				position++
+				{
+					position286 := position
+					depth++
+				l287:
+					{
+						position288, tokenIndex288, depth288 := position, tokenIndex, depth
+						{
+							position289, tokenIndex289, depth289 := position, tokenIndex, depth
+							if buffer[position] != rune('\n') {
+								goto l289
+							}
+							position++
+							goto l288
+						l289:
+							position, tokenIndex, depth = position289, tokenIndex289, depth289
+						}
+						if !matchDot() {
+							goto l288
+						}
+						goto l287
+					l288:
+						position, tokenIndex, depth = position288, tokenIndex288, depth288
+					}
+					depth--
+					add(rulePegText, position286)
+				}
+				{
+					add(ruleAction30, position)
+				}
+				depth--
+				add(ruleLineComment, position285)
+			}
+			return true
+		l284:
+			position, tokenIndex, depth = position284, tokenIndex284, depth284
+			return false
+		},
+		/* 22 BlankLine <- <(((WS LineEnd) / (LineComment? NL)) Action31)> */
+		func() bool {
 			position291, tokenIndex291, depth291 := position, tokenIndex, depth
 			{
 				position292 := position
 				depth++
-			l293:
 				{
-					position294, tokenIndex294, depth294 := position, tokenIndex, depth
-					if !rules[ruleWS]() {
+					position293, tokenIndex293, depth293 := position, tokenIndex, depth
+					if !_rules[ruleWS]() {
+						goto l294
+					}
+					if !_rules[ruleLineEnd]() {
 						goto l294
 					}
 					goto l293
 				l294:
-					position, tokenIndex, depth = position294, tokenIndex294, depth294
-				}
-				{
-					position295, tokenIndex295, depth295 := position, tokenIndex, depth
-					if !rules[ruleLineComment]() {
-						goto l295
-					}
-					goto l296
-				l295:
-					position, tokenIndex, depth = position295, tokenIndex295, depth295
-				}
-			l296:
-				{
-					position297, tokenIndex297, depth297 := position, tokenIndex, depth
-					if !rules[ruleNL]() {
-						goto l298
-					}
-					goto l297
-				l298:
-					position, tokenIndex, depth = position297, tokenIndex297, depth297
+					position, tokenIndex, depth = position293, tokenIndex293, depth293
 					{
-						position299, tokenIndex299, depth299 := position, tokenIndex, depth
-						if !matchDot() {
-							goto l299
+						position295, tokenIndex295, depth295 := position, tokenIndex, depth
+						if !_rules[ruleLineComment]() {
+							goto l295
 						}
+						goto l296
+					l295:
+						position, tokenIndex, depth = position295, tokenIndex295, depth295
+					}
+				l296:
+					if !_rules[ruleNL]() {
 						goto l291
-					l299:
-						position, tokenIndex, depth = position299, tokenIndex299, depth299
 					}
 				}
-			l297:
+			l293:
+				{
+					add(ruleAction31, position)
+				}
 				depth--
-				add(ruleLineEnd, position292)
+				add(ruleBlankLine, position292)
 			}
 			return true
 		l291:
 			position, tokenIndex, depth = position291, tokenIndex291, depth291
 			return false
 		},
-		/* 21 LineComment <- <('#' <(!'\n' .)*> Action30)> */
-		func() bool {
-			position300, tokenIndex300, depth300 := position, tokenIndex, depth
-			{
-				position301 := position
-				depth++
-				if buffer[position] != rune('#') {
-					goto l300
-				}
-				position++
-				{
-					position302 := position
-					depth++
-				l303:
-					{
-						position304, tokenIndex304, depth304 := position, tokenIndex, depth
-						{
-							position305, tokenIndex305, depth305 := position, tokenIndex, depth
-							if buffer[position] != rune('\n') {
-								goto l305
-							}
-							position++
-							goto l304
-						l305:
-							position, tokenIndex, depth = position305, tokenIndex305, depth305
-						}
-						if !matchDot() {
-							goto l304
-						}
-						goto l303
-					l304:
-						position, tokenIndex, depth = position304, tokenIndex304, depth304
-					}
-					depth--
-					add(rulePegText, position302)
-				}
-				{
-					add(ruleAction30, position)
-				}
-				depth--
-				add(ruleLineComment, position301)
-			}
-			return true
-		l300:
-			position, tokenIndex, depth = position300, tokenIndex300, depth300
-			return false
-		},
-		/* 22 BlankLine <- <(((WS LineEnd) / (LineComment? NL)) Action31)> */
-		func() bool {
-			position307, tokenIndex307, depth307 := position, tokenIndex, depth
-			{
-				position308 := position
-				depth++
-				{
-					position309, tokenIndex309, depth309 := position, tokenIndex, depth
-					if !rules[ruleWS]() {
-						goto l310
-					}
-					if !rules[ruleLineEnd]() {
-						goto l310
-					}
-					goto l309
-				l310:
-					position, tokenIndex, depth = position309, tokenIndex309, depth309
-					{
-						position311, tokenIndex311, depth311 := position, tokenIndex, depth
-						if !rules[ruleLineComment]() {
-							goto l311
-						}
-						goto l312
-					l311:
-						position, tokenIndex, depth = position311, tokenIndex311, depth311
-					}
-				l312:
-					if !rules[ruleNL]() {
-						goto l307
-					}
-				}
-			l309:
-				{
-					add(ruleAction31, position)
-				}
-				depth--
-				add(ruleBlankLine, position308)
-			}
-			return true
-		l307:
-			position, tokenIndex, depth = position307, tokenIndex307, depth307
-			return false
-		},
 		/* 23 OS <- <(NL / WS)*> */
 		func() bool {
 			{
-				position315 := position
+				position299 := position
 				depth++
-			l316:
+			l300:
 				{
-					position317, tokenIndex317, depth317 := position, tokenIndex, depth
+					position301, tokenIndex301, depth301 := position, tokenIndex, depth
 					{
-						position318, tokenIndex318, depth318 := position, tokenIndex, depth
-						if !rules[ruleNL]() {
-							goto l319
+						position302, tokenIndex302, depth302 := position, tokenIndex, depth
+						if !_rules[ruleNL]() {
+							goto l303
 						}
-						goto l318
-					l319:
-						position, tokenIndex, depth = position318, tokenIndex318, depth318
-						if !rules[ruleWS]() {
-							goto l317
+						goto l302
+					l303:
+						position, tokenIndex, depth = position302, tokenIndex302, depth302
+						if !_rules[ruleWS]() {
+							goto l301
 						}
 					}
-				l318:
-					goto l316
-				l317:
-					position, tokenIndex, depth = position317, tokenIndex317, depth317
+				l302:
+					goto l300
+				l301:
+					position, tokenIndex, depth = position301, tokenIndex301, depth301
 				}
 				depth--
-				add(ruleOS, position315)
+				add(ruleOS, position299)
 			}
 			return true
 		},
 		/* 24 WS <- <(' ' / '\t')> */
 		func() bool {
-			position320, tokenIndex320, depth320 := position, tokenIndex, depth
+			position304, tokenIndex304, depth304 := position, tokenIndex, depth
 			{
-				position321 := position
+				position305 := position
 				depth++
 				{
-					position322, tokenIndex322, depth322 := position, tokenIndex, depth
+					position306, tokenIndex306, depth306 := position, tokenIndex, depth
 					if buffer[position] != rune(' ') {
-						goto l323
+						goto l307
 					}
 					position++
-					goto l322
-				l323:
-					position, tokenIndex, depth = position322, tokenIndex322, depth322
+					goto l306
+				l307:
+					position, tokenIndex, depth = position306, tokenIndex306, depth306
 					if buffer[position] != rune('\t') {
-						goto l320
+						goto l304
 					}
 					position++
 				}
-			l322:
+			l306:
 				depth--
-				add(ruleWS, position321)
+				add(ruleWS, position305)
 			}
 			return true
-		l320:
-			position, tokenIndex, depth = position320, tokenIndex320, depth320
+		l304:
+			position, tokenIndex, depth = position304, tokenIndex304, depth304
 			return false
 		},
 		/* 25 UntilNL <- <(!'\n' .)*> */
 		nil,
 		/* 26 NL <- <('\n' / '\r' / ('\r' '\n'))> */
 		func() bool {
-			position325, tokenIndex325, depth325 := position, tokenIndex, depth
+			position309, tokenIndex309, depth309 := position, tokenIndex, depth
 			{
-				position326 := position
+				position310 := position
 				depth++
 				{
-					position327, tokenIndex327, depth327 := position, tokenIndex, depth
+					position311, tokenIndex311, depth311 := position, tokenIndex, depth
 					if buffer[position] != rune('\n') {
-						goto l328
+						goto l312
 					}
 					position++
-					goto l327
-				l328:
-					position, tokenIndex, depth = position327, tokenIndex327, depth327
+					goto l311
+				l312:
+					position, tokenIndex, depth = position311, tokenIndex311, depth311
 					if buffer[position] != rune('\r') {
-						goto l329
+						goto l313
 					}
 					position++
-					goto l327
-				l329:
-					position, tokenIndex, depth = position327, tokenIndex327, depth327
+					goto l311
+				l313:
+					position, tokenIndex, depth = position311, tokenIndex311, depth311
 					if buffer[position] != rune('\r') {
-						goto l325
+						goto l309
 					}
 					position++
 					if buffer[position] != rune('\n') {
-						goto l325
+						goto l309
 					}
 					position++
 				}
-			l327:
+			l311:
 				depth--
-				add(ruleNL, position326)
+				add(ruleNL, position310)
 			}
 			return true
-		l325:
-			position, tokenIndex, depth = position325, tokenIndex325, depth325
+		l309:
+			position, tokenIndex, depth = position309, tokenIndex309, depth309
 			return false
 		},
 		nil,
@@ -3874,5 +3775,5 @@ func (p *gherkinPeg) Init() {
 		/* 60 Action31 <- <{ p.triggerBlankLine() }> */
 		nil,
 	}
-	p.rules = rules
+	p.rules = _rules
 }
