@@ -438,3 +438,35 @@ Feature: Hello "#World"                                  # feature comment
 	assert.Equal(t, "Then", scenario1.Steps()[i].StepType())
 	assert.Equal(t, `"Lisa#\"Bang" should reply to "#Bob": "Hello!"`, scenario1.Steps()[i].Text())
 }
+
+func TestParsingBlankQuotedStrings(t *testing.T) {
+	gp := mustDomParse(t, "", `
+Feature: Empty "" Quotes
+
+  Scenario: Allow ""
+    When "" is present
+`)
+
+	feature := gp.Feature()
+	if ok := assert.NotNil(t, feature); !ok {
+		return
+	}
+
+	assert.Equal(t, `Empty "" Quotes`, feature.Title())
+
+	if ok := assert.Equal(t, 1, len(feature.Scenarios()), "Number of Scenarios"); !ok {
+		return
+	}
+
+	scenario1 := feature.Scenarios()[0]
+	if ok := assert.NotNil(t, scenario1); !ok {
+		return
+	}
+
+	assert.Equal(t, `Allow ""`, scenario1.Title())
+
+	assert.Equal(t, 1, len(scenario1.Steps()), "Number of steps in Scenario 1")
+	i := 0
+	assert.Equal(t, "When", scenario1.Steps()[i].StepType())
+	assert.Equal(t, `"" is present`, scenario1.Steps()[i].Text())
+}

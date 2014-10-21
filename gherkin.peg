@@ -96,7 +96,7 @@ Word <-
 EscapedChar <- '\\' . 
 
 QuotedString <- 
-  '"' ( EscapedChar / [^\n\\"]+ )+ '"'
+  '"' ( EscapedChar / [^\n\\"]+ )* '"'
 
 UntilLineEnd <-
   ( EscapedChar / [^\n\\"#]+ / QuotedString )+
