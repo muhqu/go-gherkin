@@ -24,7 +24,7 @@ gherkin.peg.go: gherkin.peg
 	  -e 's/{{\([^}]*\)}}/{ p.\1 = buffer[begin:end] }/g' \
 	  > gherkin.peg.pp
 
-	$(peg) -switch -inline gherkin.peg.pp
+	$(peg) -inline gherkin.peg.pp
 
 	# dirty way to not export PEG specific types, constants or variables
 	cat gherkin.peg.pp.go | sed \

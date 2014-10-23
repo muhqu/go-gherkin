@@ -470,3 +470,20 @@ Feature: Empty "" Quotes
 	assert.Equal(t, "When", scenario1.Steps()[i].StepType())
 	assert.Equal(t, `"" is present`, scenario1.Steps()[i].Text())
 }
+
+func TestParsingDescriptionWithBlankLines(t *testing.T) {
+	gp := mustDomParse(t, "", `
+Feature: Description With Blank Lines
+
+  Whitespace should be allowed.
+
+  (Multiple times)
+`)
+
+	feature := gp.Feature()
+	if ok := assert.NotNil(t, feature); !ok {
+		return
+	}
+
+	assert.Equal(t, "Whitespace should be allowed.\n\n(Multiple times)", feature.Description())
+}
