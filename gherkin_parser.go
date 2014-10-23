@@ -1,6 +1,9 @@
 package gherkin
 
-import "github.com/muhqu/go-gherkin/events"
+import (
+	"github.com/muhqu/go-gherkin/events"
+	"strings"
+)
 
 type GherkinParser interface {
 	WithLogFn(LogFn)
@@ -11,6 +14,10 @@ type GherkinParser interface {
 }
 
 func NewGherkinParser(content string) GherkinParser {
+	if !strings.HasSuffix(content, "\n") {
+		content = content + "\n"
+	}
+
 	return &gherkinPegWrapper{gp: &gherkinPeg{Buffer: content}}
 }
 

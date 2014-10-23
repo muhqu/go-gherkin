@@ -15,7 +15,7 @@ Begin <-
 
 Feature <- 
   Tags 'Feature:' WS* <UntilLineEnd?>{{buf1}} <>{{buf2}} LineEnd
-  (WS* !('@' Word / 'Background:' / 'Scenario:' / 'Scenario Outline:' / !.) <UntilLineEnd?>{{++buf2}} LineEnd { p.buf2 = p.buf2 + "\n" })*
+  (WS* !('@' Word / 'Background:' / 'Scenario:' / 'Scenario Outline:') <UntilLineEnd?>{{++buf2}} LineEnd { p.buf2 = p.buf2 + "\n" })*
   { p.beginFeature(trimWS(p.buf1), trimWSML(p.buf2), p.buftags); p.buftags = nil }
   ( Background / Scenario / Outline / BlankLine )*
   { p.endFeature() }
@@ -101,7 +101,7 @@ UntilLineEnd <-
   ( EscapedChar / [^\n\\"#]+ / QuotedString )+
 
 LineEnd <- 
-  WS* LineComment? ( NL / !. )
+  WS* LineComment? NL
 
 LineComment <- 
   '#' < [^\n]* >
