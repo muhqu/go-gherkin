@@ -5,7 +5,6 @@ type gherkinPeg Peg {
 
   buf1 string
   buf2 string
-  buf3 string
   buftags []string
   bufcmt string
 }
@@ -16,8 +15,8 @@ Begin <-
 
 Feature <- 
   Tags 'Feature:' WS* <UntilLineEnd?>{{buf1}} <>{{buf2}} LineEnd
-  ( (WS* !('Background:' / 'Scenario:' / 'Scenario Outline:') <UntilLineEnd>{{++buf2}} LineEnd {p.buf2 = p.buf2 + "\n" })+ )?
-  { p.beginFeature(trimWS(trimWS(p.buf1)), trimWSML(p.buf2), p.buftags); p.buftags = nil } 
+  (WS* !('@' Word / 'Background:' / 'Scenario:' / 'Scenario Outline:') <UntilLineEnd?>{{++buf2}} LineEnd { p.buf2 = p.buf2 + "\n" })*
+  { p.beginFeature(trimWS(p.buf1), trimWSML(p.buf2), p.buftags); p.buftags = nil }
   ( Background / Scenario / Outline / BlankLine )*
   { p.endFeature() }
 
@@ -102,7 +101,7 @@ UntilLineEnd <-
   ( EscapedChar / [^\n\\"#]+ / QuotedString )+
 
 LineEnd <- 
-  WS* LineComment? ( NL / !. )
+  WS* LineComment? NL
 
 LineComment <- 
   '#' < [^\n]* >
