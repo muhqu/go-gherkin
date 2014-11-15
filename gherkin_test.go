@@ -414,6 +414,7 @@ Feature: Hello "#World"                                  # feature comment
 	}
 	assert.Equal(t, `Hello "#World"`, feature.Title())
 	assert.Equal(t, "Bla bla\nBla", feature.Description())
+	assert.Equal(t, []string{"awesome", "dude"}, feature.Tags())
 
 	if ok := assert.Equal(t, 1, len(feature.Scenarios()), "Number of Scenarios"); !ok {
 		return
@@ -424,6 +425,7 @@ Feature: Hello "#World"                                  # feature comment
 		return
 	}
 	assert.Equal(t, nodes.ScenarioNodeType, scenario1.NodeType())
+	assert.Equal(t, []string{"wip", "wop"}, scenario1.Tags())
 	assert.Equal(t, 4, len(scenario1.Steps()), "Number of steps in Scenario 1")
 	i := 0
 	assert.Equal(t, "Given", scenario1.Steps()[i].StepType())
