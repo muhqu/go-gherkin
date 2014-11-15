@@ -171,11 +171,6 @@ func (gp *gherkinPegBase) beginTableCell() {
 func (gp *gherkinPegBase) endTableCell(buf string) {
 	gp.log("EndTableCell: %#v", buf)
 	gp.emit(&events.TableCellEvent{buf})
-	/*
-		rows := gp.table.rows
-		i := len(rows) - 1
-		rows[i] = append(rows[i], trimWS(buf))
-	*/
 }
 func (gp *gherkinPegBase) endTableRow() {
 	gp.log("EndTableRow")
