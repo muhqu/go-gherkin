@@ -16,7 +16,7 @@ get-deps:
 	go get github.com/pebbe/util
 
 gherkin.peg.go: gherkin.peg
-	
+
 	# pre-process peg file
 	cat gherkin.peg | sed \
 	  -e 's/{{++\([^}]*\)}}/{ p.\1 = p.\1 + buffer[begin:end] }/g' \
@@ -36,20 +36,20 @@ gherkin.peg.go: gherkin.peg
 	  > $@
 	rm gherkin.peg.pp gherkin.peg.pp.go
 
-version: 
+version:
 	@echo "version: $(GIT_VERSION)" >&2
 	@cat version.go | sed -e 's/\(VERSION = "\)[^\"]*\("\)/\1'$(GIT_VERSION)'\2/' > version.go.tmp
 	@diff version.go.tmp version.go || (cat version.go.tmp > version.go)
 	@rm version.go.tmp
 
 build: version gherkin.peg.go
-	go build ./ ./formater ./cmd/gherkinfmt
+	go build ./ ./formater
 
 install: version gherkin.peg.go
-	go install ./cmd/gherkinfmt
+	go install
 
 test: version gherkin.peg.go
-	go test ./ ./formater ./cmd/gherkinfmt
+	go test ./ ./formater
 
 integration: get-deps clean build test
 	@echo "done: $(GIT_VERSION)" >&2
