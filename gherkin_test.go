@@ -175,9 +175,9 @@ Feature: Dead Simple Calculator
   Bla Bla
   Bla
 
-  Background: 
+  Background:
     Given a Simple Calculator
-  
+
   @wip
   Scenario: Adding 2 numbers
      When I press the key "2"
@@ -219,7 +219,7 @@ Feature: Dead Simple Calculator
 	Bla Bla
 	Bla
 
-Background: 
+Background:
 	Given a Simple Calculator
 
 @wip
