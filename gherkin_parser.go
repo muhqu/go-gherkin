@@ -1,8 +1,9 @@
 package gherkin
 
 import (
-	"github.com/muhqu/go-gherkin/events"
 	"strings"
+
+	"github.com/muhqu/go-gherkin/events"
 )
 
 type GherkinParser interface {
