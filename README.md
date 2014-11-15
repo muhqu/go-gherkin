@@ -17,10 +17,6 @@ Install
 
 ```bash
 $ go get github.com/muhqu/go-gherkin
-...
-$ go install github.com/muhqu/go-gherkin/cmd/gherkinfmt
-...
-$ gherkinfmt -version # verify install
 ```
 
 ### Via GNU Make
@@ -30,8 +26,6 @@ $ git clone https://github.com/muhqu/go-gherkin
 ...
 $ cd go-gherkin/
 $ make get-deps build test install
-...
-$ gherkinfmt -version # verify install
 ```
 
 
