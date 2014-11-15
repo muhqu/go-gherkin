@@ -74,6 +74,15 @@ scenario 1: "Nice people" []string{"nice", "people"}
   step 4: "Then" "\"Lisa\" should reply to \"Bob\": \"Hello!\""
 ```
 
+
+Using Go-Gherkin
+----------------
+
+Projects using go-gherkin package:
+ 
+- [gherkinfmt](https://github.com/muhqu/gherkinfmt) - Commandline tool to format Gherkin files.
+
+
 Author
 ------
 
