@@ -352,7 +352,8 @@ func (g *gherkinPrettyPrinter) FormatTable(node nodes.TableNode) {
 	for _, row := range rows {
 		g.write("      ")
 		for c, str := range row {
-			_, err := strconv.ParseFloat(str, 64)
+			numstr := strings.Replace(str, "$", "", -1)
+			_, err := strconv.ParseFloat(numstr, 64)
 			var fmtStr string
 			if err != nil {
 				fmtStr = g.colored(c_YELLOW, fmt.Sprintf(" %%-%ds ", cellwidth[c])).String()
