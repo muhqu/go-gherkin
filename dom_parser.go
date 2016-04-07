@@ -118,7 +118,7 @@ func (g *gherkinDOMParser) ProcessEvent(event GherkinEvent) {
 
 	case *OutlineExamplesEndEvent:
 		examples := NewOutlineExamplesNode(g.table)
-		g.outline.SetExamples(examples)
+		g.outline.AddExamples(examples)
 		g.table = nil
 		g.comment = nil
 
