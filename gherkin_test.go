@@ -489,3 +489,32 @@ Feature: Description With Blank Lines
 
 	assert.Equal(t, "Whitespace should be allowed.\n\n(Multiple times)", feature.Description())
 }
+
+func TestParsingMultipleExamples(t *testing.T) {
+	gp := mustDomParse(t, "", `
+Feature: Account withdrawal
+
+  Scenario Outline: Withdraw fixed amount
+    Given I have <Balance> in my account
+    When I choose to withdraw the fixed amount of <Withdrawal>
+    Then I should <Outcome>
+    And the balance of my account should be <Remaining>
+
+    Examples:
+      | Balance | Withdrawal | Outcome | Remaining |
+      | $500 | $50 | receive $50 cash | $450 |
+      | $500 | $100 | receive $100 cash | $400 |
+
+    Examples:
+      | Balance | Withdrawal | Outcome | Remaining |
+      | $100 | $200 | see an error message | $100 |
+      | $0 | $50 | see an error message | $0 |
+`)
+
+	feature := gp.Feature()
+	if ok := assert.NotNil(t, feature); !ok {
+		return
+	}
+
+	assert.Equal(t, "Account withdrawal", feature.Title())
+}
