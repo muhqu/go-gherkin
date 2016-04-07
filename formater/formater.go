@@ -285,9 +285,11 @@ func (g *gherkinPrettyPrinter) FormatScenario(node nodes.ScenarioNode) {
 			}
 		}
 		if node.NodeType() == nodes.OutlineNodeType {
-			g.linebuff.Writeln(g.colored(c_WHITE, "\n    Examples:"))
-			g.linebuff.Flush()
-			g.FormatTable(node.(nodes.OutlineNode).Examples().Table())
+			for _, examples := range node.(nodes.OutlineNode).AllExamples() {
+				g.linebuff.Writeln(g.colored(c_WHITE, "\n    Examples:"))
+				g.linebuff.Flush()
+				g.FormatTable(examples.Table())
+			}
 		}
 	}
 	g.linebuff.Flush()
