@@ -9,46 +9,46 @@ type gherkinPeg Peg {
   bufcmt string
 }
 
-Begin <- 
+Begin <-
   Feature?
   OS !.
 
-Feature <- 
+Feature <-
   Tags 'Feature:' WS* <UntilLineEnd?>{{buf1}} <>{{buf2}} LineEnd
   (WS* !('@' Word / 'Background:' / 'Scenario:' / 'Scenario Outline:') <UntilLineEnd?>{{++buf2}} LineEnd { p.buf2 = p.buf2 + "\n" })*
   { p.beginFeature(trimWS(p.buf1), trimWSML(p.buf2), p.buftags); p.buftags = nil }
   ( Background / Scenario / Outline / BlankLine )*
   { p.endFeature() }
 
-Background <- 
+Background <-
   Tags 'Background:' WS* <UntilLineEnd?>{{buf1}} LineEnd
   { p.beginBackground(trimWS(p.buf1), p.buftags); p.buftags = nil }
   (Step / BlankLine)*
-  { p.endBackground() } 
+  { p.endBackground() }
 
-Scenario <- 
+Scenario <-
   Tags 'Scenario:' WS* <UntilLineEnd?>{{buf1}} LineEnd
   { p.beginScenario(trimWS(p.buf1), p.buftags); p.buftags = nil }
   (Step / BlankLine)*
   { p.endScenario() }
 
-Outline <- 
+Outline <-
   Tags 'Scenario Outline:' WS* <UntilLineEnd?>{{buf1}} LineEnd
-  { p.beginOutline(trimWS(p.buf1), p.buftags); p.buftags = nil } 
+  { p.beginOutline(trimWS(p.buf1), p.buftags); p.buftags = nil }
   (Step / BlankLine)*
-  OutlineExamples?
-  { p.endOutline() } 
+  (OutlineExamples / BlankLine)*
+  { p.endOutline() }
 
 OutlineExamples <-
   OS 'Examples:' LineEnd
-  { p.beginOutlineExamples() } 
+  { p.beginOutlineExamples() }
   Table?
-  { p.endOutlineExamples() } 
+  { p.endOutlineExamples() }
 
-Step <- 
+Step <-
   WS* <('Given' / 'When' / 'Then' / 'And' / 'Or' / 'But')>{{buf1}}
   WS* <UntilLineEnd>{{buf2}} LineEnd
-  { p.beginStep(trimWS(p.buf1), trimWS(p.buf2)) } 
+  { p.beginStep(trimWS(p.buf1), trimWS(p.buf2)) }
   StepArgument?
   { p.endStep() }
 
@@ -92,22 +92,22 @@ Tag <-
 Word <-
   [^\r\n\t "#]+
 
-EscapedChar <- '\\' . 
+EscapedChar <- '\\' .
 
-QuotedString <- 
+QuotedString <-
   '"' ( EscapedChar / [^\n\\"]+ )* '"'
 
 UntilLineEnd <-
   ( EscapedChar / [^\n\\"#]+ / QuotedString )+
 
-LineEnd <- 
+LineEnd <-
   WS* LineComment? NL
 
-LineComment <- 
+LineComment <-
   '#' < [^\n]* >
   { p.bufcmt = buffer[begin:end]; p.triggerComment(p.bufcmt) }
 
-BlankLine <- 
+BlankLine <-
   ( WS LineEnd / ( LineComment? NL ) )
   { p.triggerBlankLine() }
 
@@ -119,4 +119,3 @@ WS <- (' ' / '\t')
 UntilNL <- [^\n]*
 
 NL <- ('\n' / '\r' / '\r\n')
-
