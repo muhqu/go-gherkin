@@ -21,6 +21,7 @@ type gherkinDOMParser struct {
 	scenario       MutableScenarioNode
 	background     MutableBackgroundNode
 	outline        MutableOutlineNode
+	examples       MutableOutlineExamplesNode
 	step           MutableStepNode
 	pyStringIndent int
 	pyString       MutablePyStringNode
@@ -115,10 +116,15 @@ func (g *gherkinDOMParser) ProcessEvent(event GherkinEvent) {
 
 	case *OutlineExamplesEvent:
 		g.table = nil
+		node := NewMutableOutlineExamplesNode(e.Title)
+		g.examples = node
+		node.SetComment(g.comment)
+		g.comment = nil
 
 	case *OutlineExamplesEndEvent:
-		examples := NewOutlineExamplesNode(g.table)
-		g.outline.AddExamples(examples)
+		g.examples.SetTable(g.table)
+		g.outline.AddExamples(g.examples)
+		g.examples = nil
 		g.table = nil
 		g.comment = nil
 
@@ -151,6 +157,10 @@ func (g *gherkinDOMParser) ProcessEvent(event GherkinEvent) {
 
 	case *TableRowEvent:
 		g.table.NewRow()
+
+	case *TableRowEndEvent:
+		g.table.SetRowComment(g.comment)
+		g.comment = nil
 
 	case *TableCellEvent:
 		g.table.AddCell(e.Content)

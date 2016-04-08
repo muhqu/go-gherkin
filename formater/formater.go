@@ -286,8 +286,15 @@ func (g *gherkinPrettyPrinter) FormatScenario(node nodes.ScenarioNode) {
 		}
 		if node.NodeType() == nodes.OutlineNodeType {
 			for _, examples := range node.(nodes.OutlineNode).AllExamples() {
-				g.linebuff.Writeln(g.colored(c_WHITE, "\n    Examples:"))
-				g.linebuff.Flush()
+				var title string
+				if examples.Title() != "" {
+					title = " " + examples.Title()
+				}
+				g.write("\n")
+				g.linebuff.Writeln(
+					g.colored(c_WHITE, "    Examples:%s", title),
+					g.coloredComment(examples.Comment()),
+				)
 				g.FormatTable(examples.Table())
 			}
 		}
@@ -339,6 +346,7 @@ func (g *gherkinPrettyPrinter) formatStep(node nodes.StepNode) {
 
 func (g *gherkinPrettyPrinter) FormatTable(node nodes.TableNode) {
 	rows := node.Rows()
+	comments := node.RowComments()
 	cellwidth := make(map[int]int, 100)
 	for _, row := range rows {
 		for c, str := range row {
@@ -348,22 +356,26 @@ func (g *gherkinPrettyPrinter) FormatTable(node nodes.TableNode) {
 			}
 		}
 	}
-	wood := g.colored(c_BOLD_YELLOW, "|").String()
-	for _, row := range rows {
-		g.write("      ")
+	wood := g.colored(c_BOLD_YELLOW, "|")
+	for i, row := range rows {
+		comment := comments[i]
+		var buf []*styledString
+		buf = append(buf, g.colored(c_WHITE, "      "))
 		for c, str := range row {
 			numstr := strings.Replace(str, "$", "", -1)
 			_, err := strconv.ParseFloat(numstr, 64)
 			var fmtStr string
 			if err != nil {
-				fmtStr = g.colored(c_YELLOW, fmt.Sprintf(" %%-%ds ", cellwidth[c])).String()
+				fmtStr = fmt.Sprintf(" %%-%ds ", cellwidth[c])
 			} else {
-				fmtStr = g.colored(c_YELLOW, fmt.Sprintf(" %%%ds ", cellwidth[c])).String()
+				fmtStr = fmt.Sprintf(" %%%ds ", cellwidth[c])
 			}
-			g.write(wood + fmt.Sprintf(fmtStr, str))
+			buf = append(buf, wood, g.colored(c_YELLOW, fmtStr, str))
 		}
-		g.write(wood + "\n")
+		buf = append(buf, wood)
+		g.linebuff.Writeln(g.joinStyledStrings(buf...), g.coloredComment(comment))
 	}
+	g.linebuff.Flush()
 }
 
 func (g *gherkinPrettyPrinter) FormatPyString(node nodes.PyStringNode) {

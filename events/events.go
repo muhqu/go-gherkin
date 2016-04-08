@@ -30,6 +30,7 @@ const (
 	TableEventType
 	TableRowEventType
 	TableCellEventType
+	TableRowEndEventType
 	TableEndEventType
 	BlankLineEventType
 	CommentEventType
@@ -125,6 +126,7 @@ func (*OutlineEndEvent) String() string {
 }
 
 type OutlineExamplesEvent struct {
+	Title string
 }
 
 func (*OutlineExamplesEvent) EventType() EventType {
@@ -216,6 +218,16 @@ func (*TableRowEvent) EventType() EventType {
 }
 func (*TableRowEvent) String() string {
 	return "TableRowEvent()"
+}
+
+type TableRowEndEvent struct {
+}
+
+func (*TableRowEndEvent) EventType() EventType {
+	return TableRowEndEventType
+}
+func (*TableRowEndEvent) String() string {
+	return "TableRowEndEvent()"
 }
 
 type TableCellEvent struct {
