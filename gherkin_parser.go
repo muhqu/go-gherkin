@@ -119,9 +119,9 @@ func (gp *gherkinPegBase) endOutline() {
 	gp.emit(&events.OutlineEndEvent{})
 }
 
-func (gp *gherkinPegBase) beginOutlineExamples() {
+func (gp *gherkinPegBase) beginOutlineExamples(title string) {
 	gp.log("BeginOutlineExamples")
-	gp.emit(&events.OutlineExamplesEvent{})
+	gp.emit(&events.OutlineExamplesEvent{title})
 }
 func (gp *gherkinPegBase) endOutlineExamples() {
 	gp.log("EndOutlineExamples")
@@ -175,6 +175,7 @@ func (gp *gherkinPegBase) endTableCell(buf string) {
 }
 func (gp *gherkinPegBase) endTableRow() {
 	gp.log("EndTableRow")
+	gp.emit(&events.TableRowEndEvent{})
 }
 func (gp *gherkinPegBase) endTable() {
 	gp.log("EndTable")

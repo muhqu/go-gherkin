@@ -387,6 +387,20 @@ func (o OutlineExamplesNodes) Table() TableNode {
 	return t
 }
 
+func (o OutlineExamplesNodes) Title() string {
+	if len(o) > 0 {
+		return o[0].Title()
+	}
+	return ""
+}
+
+func (o OutlineExamplesNodes) Comment() CommentNode {
+	if len(o) > 0 {
+		return o[0].Comment()
+	}
+	return nil
+}
+
 func NewMutableOutlineNode(title string, tags []string) MutableOutlineNode {
 	n := &outlineNode{}
 	n.nodeType = OutlineNodeType
@@ -422,7 +436,24 @@ func (o *outlineNode) AllExamples() []OutlineExamplesNode {
 type OutlineExamplesNode interface {
 	NodeInterface // NodeType: OutlineExamplesNodeType
 
+	Title() string
 	Table() TableNode
+	Comment() CommentNode
+}
+
+type MutableOutlineExamplesNode interface {
+	OutlineExamplesNode
+
+	SetTitle(title string)
+	SetTable(table TableNode)
+	SetComment(comment CommentNode)
+}
+
+func NewMutableOutlineExamplesNode(title string) *outlineExamplesNode {
+	n := &outlineExamplesNode{}
+	n.nodeType = OutlineExamplesNodeType
+	n.title = title
+	return n
 }
 
 func NewOutlineExamplesNode(table TableNode) *outlineExamplesNode {
@@ -435,7 +466,17 @@ func NewOutlineExamplesNode(table TableNode) *outlineExamplesNode {
 type outlineExamplesNode struct {
 	abstractNode
 
-	table TableNode
+	title   string
+	table   TableNode
+	comment CommentNode
+}
+
+func (o *outlineExamplesNode) Title() string {
+	return o.title
+}
+
+func (o *outlineExamplesNode) SetTitle(title string) {
+	o.title = title
 }
 
 func (o *outlineExamplesNode) Table() TableNode {
@@ -443,6 +484,18 @@ func (o *outlineExamplesNode) Table() TableNode {
 		return n
 	}
 	return nil
+}
+
+func (o *outlineExamplesNode) SetTable(table TableNode) {
+	o.table = table
+}
+
+func (o *outlineExamplesNode) Comment() CommentNode {
+	return o.comment
+}
+
+func (o *outlineExamplesNode) SetComment(comment CommentNode) {
+	o.comment = comment
 }
 
 // ----------------------------------------
@@ -499,6 +552,7 @@ type TableNode interface {
 	NodeInterface // NodeType: TableNodeType
 
 	Rows() [][]string
+	RowComments() []CommentNode
 }
 type MutableTableNode interface {
 	TableNode
@@ -507,33 +561,47 @@ type MutableTableNode interface {
 	NewRow()
 	AddRow(row []string)
 	AddCell(cell string)
+	SetRowComment(comment CommentNode)
 }
 
 type tableNode struct {
 	abstractNode
 
-	rows [][]string
+	nextRowIndex int
+	comments     []CommentNode
+	rows         [][]string
 }
 
 func NewMutableTableNode() MutableTableNode {
 	n := &tableNode{}
 	n.nodeType = TableNodeType
+	n.comments = make([]CommentNode, 1)
 	return n
 }
 
 func (t *tableNode) WithRows(rows [][]string) MutableTableNode {
 	t.rows = rows
+	t.comments = make([]CommentNode, len(rows)+1)
+	t.nextRowIndex = len(rows)
 	return t
 }
 func (t *tableNode) NewRow() {
 	t.AddRow([]string{})
 }
 func (t *tableNode) AddRow(row []string) {
+	t.nextRowIndex = t.nextRowIndex + 1
 	t.rows = append(t.rows, row)
+	t.comments = append(t.comments, nil)
 }
 func (t *tableNode) AddCell(cell string) {
 	i := len(t.rows) - 1
 	t.rows[i] = append(t.rows[i], cell)
+}
+func (t *tableNode) RowComments() []CommentNode {
+	return t.comments
+}
+func (t *tableNode) SetRowComment(comment CommentNode) {
+	t.comments[t.nextRowIndex-1] = comment
 }
 
 func (t *tableNode) Rows() [][]string {

@@ -518,3 +518,30 @@ Feature: Account withdrawal
 
 	assert.Equal(t, "Account withdrawal", feature.Title())
 }
+
+func TestParsingExampleWithTitle(t *testing.T) {
+	gp := mustDomParse(t, "", `
+	Feature: Account withdrawal
+
+  Scenario Outline: Withdraw fixed amount
+    Given I have <Balance> in my account
+    When I choose to withdraw the fixed amount of <Withdrawal>
+    Then I should <Outcome>
+    And the balance of my account should be <Remaining>
+
+    Examples: Attempt to withdraw too much
+      | Balance | Withdrawal | Outcome | Remaining |
+      | $100 | $200 | see an error message | $100 |
+      | $0 | $50 | see an error message | $0 |
+
+`)
+
+	feature := gp.Feature()
+	if ok := assert.NotNil(t, feature); !ok {
+		return
+	}
+
+	assert.Equal(t, "Account withdrawal", feature.Title())
+	outline := feature.Scenarios()[0].(nodes.OutlineNode)
+	assert.Equal(t, "Attempt to withdraw too much", outline.Examples().Title())
+}
