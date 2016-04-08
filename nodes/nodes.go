@@ -358,6 +358,7 @@ type OutlineNode interface {
 	ScenarioNode // NodeType: OutlineNodeType
 
 	Examples() OutlineExamplesNode
+	AllExamples() []OutlineExamplesNode
 }
 type MutableOutlineNode interface {
 	OutlineNode
@@ -367,7 +368,23 @@ type MutableOutlineNode interface {
 	AddBlankLine(line BlankLineNode) // stupid
 
 	SetExamples(examples OutlineExamplesNode)
+	AddExamples(examples OutlineExamplesNode)
 	SetComment(comment CommentNode)
+}
+
+type OutlineExamplesNodes []OutlineExamplesNode
+
+func (o OutlineExamplesNodes) NodeType() NodeType {
+	return OutlineExamplesNodeType
+}
+
+func (o OutlineExamplesNodes) Table() TableNode {
+	t := &tableNode{}
+	t.nodeType = TableNodeType
+	for _, example := range o {
+		t.rows = append(t.rows, example.Table().Rows()...)
+	}
+	return t
 }
 
 func NewMutableOutlineNode(title string, tags []string) MutableOutlineNode {
@@ -381,15 +398,23 @@ func NewMutableOutlineNode(title string, tags []string) MutableOutlineNode {
 type outlineNode struct {
 	abstractScenarioNode
 
-	examples OutlineExamplesNode
+	examples OutlineExamplesNodes
 }
 
 func (o *outlineNode) SetExamples(examples OutlineExamplesNode) {
-	o.examples = examples
+	o.examples = []OutlineExamplesNode{examples}
+}
+
+func (o *outlineNode) AddExamples(examples OutlineExamplesNode) {
+	o.examples = append(o.examples, examples)
 }
 
 func (o *outlineNode) Examples() OutlineExamplesNode {
 	return o.examples
+}
+
+func (o *outlineNode) AllExamples() []OutlineExamplesNode {
+	return []OutlineExamplesNode(o.examples)
 }
 
 // ----------------------------------------

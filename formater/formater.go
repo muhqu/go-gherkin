@@ -285,9 +285,11 @@ func (g *gherkinPrettyPrinter) FormatScenario(node nodes.ScenarioNode) {
 			}
 		}
 		if node.NodeType() == nodes.OutlineNodeType {
-			g.linebuff.Writeln(g.colored(c_WHITE, "\n    Examples:"))
-			g.linebuff.Flush()
-			g.FormatTable(node.(nodes.OutlineNode).Examples().Table())
+			for _, examples := range node.(nodes.OutlineNode).AllExamples() {
+				g.linebuff.Writeln(g.colored(c_WHITE, "\n    Examples:"))
+				g.linebuff.Flush()
+				g.FormatTable(examples.Table())
+			}
 		}
 	}
 	g.linebuff.Flush()
@@ -350,7 +352,8 @@ func (g *gherkinPrettyPrinter) FormatTable(node nodes.TableNode) {
 	for _, row := range rows {
 		g.write("      ")
 		for c, str := range row {
-			_, err := strconv.ParseFloat(str, 64)
+			numstr := strings.Replace(str, "$", "", -1)
+			_, err := strconv.ParseFloat(numstr, 64)
 			var fmtStr string
 			if err != nil {
 				fmtStr = g.colored(c_YELLOW, fmt.Sprintf(" %%-%ds ", cellwidth[c])).String()

@@ -204,3 +204,51 @@ func ExampleGherkinPrettyFormater_3() {
 	//   Scenario: Follow user actions
 	//
 }
+
+const unformatedGherkinWithMultipleExamples = `
+Feature: Account withdrawal
+Scenario Outline: Withdraw fixed amount
+Given I have <Balance> in my account
+When I choose to withdraw the fixed amount of <Withdrawal>
+Then I should <Outcome>
+And the balance of my account should be <Remaining>
+Examples:
+| Balance | Withdrawal | Outcome | Remaining |
+| $500 | $50 | receive $50 cash | $450 |
+| $500 | $100 | receive $100 cash | $400 |
+Examples:
+| Balance | Withdrawal | Outcome | Remaining |
+| $100 | $200 | see an error message | $100 |
+| $0 | $50 | see an error message | $0 |
+`
+
+func ExampleGherkinPrettyFormater_4() {
+
+	fmt := &formater.GherkinPrettyFormater{}
+
+	// unformatedGherkin := `@dead @simple Feature: Dead Simple Calculator ...`
+	gp := gherkin.NewGherkinDOMParser(unformatedGherkinWithMultipleExamples)
+
+	fmt.Format(gp, os.Stdout)
+
+	// Output:
+	//
+	// Feature: Account withdrawal
+	//
+	//   Scenario Outline: Withdraw fixed amount
+	//     Given I have <Balance> in my account
+	//     When I choose to withdraw the fixed amount of <Withdrawal>
+	//     Then I should <Outcome>
+	//     And the balance of my account should be <Remaining>
+	//
+	//     Examples:
+	//       | Balance | Withdrawal | Outcome           | Remaining |
+	//       |    $500 |        $50 | receive $50 cash  |      $450 |
+	//       |    $500 |       $100 | receive $100 cash |      $400 |
+	//
+	//     Examples:
+	//       | Balance | Withdrawal | Outcome              | Remaining |
+	//       |    $100 |       $200 | see an error message |      $100 |
+	//       |      $0 |        $50 | see an error message |        $0 |
+	//
+}
