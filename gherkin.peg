@@ -40,8 +40,8 @@ Outline <-
   { p.endOutline() }
 
 OutlineExamples <-
-  OS 'Examples:' LineEnd
-  { p.beginOutlineExamples() }
+  OS 'Examples:' WS* <UntilLineEnd?>{{buf1}} LineEnd
+  { p.beginOutlineExamples(trimWS(p.buf1)) }
   Table?
   { p.endOutlineExamples() }
 
