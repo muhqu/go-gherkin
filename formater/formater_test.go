@@ -226,7 +226,7 @@ func ExampleGherkinPrettyFormater_4() {
 
 	fmt := &formater.GherkinPrettyFormater{}
 
-	// unformatedGherkin := `@dead @simple Feature: Dead Simple Calculator ...`
+	// unformatedGherkinWithMultipleExamples := `Feature: Account withdrawal ...`
 	gp := gherkin.NewGherkinDOMParser(unformatedGherkinWithMultipleExamples)
 
 	fmt.Format(gp, os.Stdout)
@@ -250,5 +250,44 @@ func ExampleGherkinPrettyFormater_4() {
 	//       | Balance | Withdrawal | Outcome              | Remaining |
 	//       |    $100 |       $200 | see an error message |      $100 |
 	//       |      $0 |        $50 | see an error message |        $0 |
+	//
+}
+
+const unformatedGherkinWithScenarioDescriptionAndBullets = `
+Feature: Descriptions and Bullets
+In order to be expressive as one can get
+As some feature writer
+I should be able to pass arbitary descriptions and organize steps with bullet points.
+Scenario: Expressive as it can get
+Imagine I can write lines and lines and lines of text to describe my scenario,
+but what really, really counts is my the following:
+* I have 6 cukes
+* I eat 2 of my cukes
+* I should have 4 cukes left
+`
+
+func ExampleGherkinPrettyFormater_5() {
+
+	fmt := &formater.GherkinPrettyFormater{}
+
+	// unformatedGherkin := `@dead @simple Feature: Dead Simple Calculator ...`
+	gp := gherkin.NewGherkinDOMParser(unformatedGherkinWithScenarioDescriptionAndBullets)
+
+	fmt.Format(gp, os.Stdout)
+
+	// Output:
+	//
+	// Feature: Descriptions and Bullets
+	//   In order to be expressive as one can get
+	//   As some feature writer
+	//   I should be able to pass arbitary descriptions and organize steps with bullet points.
+	//
+	//   Scenario: Expressive as it can get
+	//     Imagine I can write lines and lines and lines of text to describe my scenario,
+	//     but what really, really counts is my the following:
+	//
+	//     * I have 6 cukes
+	//     * I eat 2 of my cukes
+	//     * I should have 4 cukes left
 	//
 }

@@ -263,19 +263,39 @@ func (g *gherkinPrettyPrinter) FormatScenario(node nodes.ScenarioNode) {
 	if len(tags) > 0 {
 		g.write(fmt.Sprintf("  %s\n", g.colored(c_CYAN, fmtTags(tags))))
 	}
+
+	var scenarioKeyword string
 	switch node.NodeType() {
 	case nodes.BackgroundNodeType:
-		g.linebuff.Writeln(g.colored(c_BOLD, "  %s", "Background:"), g.coloredComment(node.Comment()))
-	case nodes.ScenarioNodeType:
-		g.linebuff.Writeln(g.joinStyledStrings(
-			g.colored(c_BOLD, "  %s", "Scenario:"),
-			g.colored(c_WHITE, " %s", node.Title()),
-		),
+		scenarioKeyword = "Background"
+	case nodes.OutlineNodeType:
+		scenarioKeyword = "Scenario Outline"
+	default:
+		scenarioKeyword = "Scenario"
+	}
+
+	if node.Title() != "" {
+		g.linebuff.Writeln(
+			g.joinStyledStrings(
+				g.colored(c_BOLD, "  %s:", scenarioKeyword),
+				g.colored(c_WHITE, " %s", node.Title()),
+			),
 			g.coloredComment(node.Comment()),
 		)
-	case nodes.OutlineNodeType:
-		g.write(fmt.Sprintf("  %s %s\n", g.colored(c_BOLD, "Scenario Outline:"), g.colored(c_WHITE, node.Title())))
+	} else {
+		g.linebuff.Writeln(
+			g.colored(c_BOLD, "  %s:", scenarioKeyword),
+			g.coloredComment(node.Comment()),
+		)
 	}
+
+	if node.Description() != "" {
+		g.write(prefixLines("    ", node.Description()) + "\n")
+		if !g.gpf.SkipSteps {
+			g.write("\n")
+		}
+	}
+
 	if !g.gpf.SkipSteps {
 		for _, line := range node.Lines() {
 			if step, ok := line.(nodes.StepNode); ok {
