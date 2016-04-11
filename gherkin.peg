@@ -13,28 +13,38 @@ Begin <-
   Feature?
   OS !.
 
+ScenarioKeyWord <-
+  ('Background:' / 'Scenario:' / 'Scenario Outline:')
+
+StepKeyWord <-
+  ('Given' / 'When' / 'Then' / 'And' / 'Or' / 'But' / '*')
+
+
 Feature <-
   Tags 'Feature:' WS* <UntilLineEnd?>{{buf1}} <>{{buf2}} LineEnd
-  (WS* !('@' Word / 'Background:' / 'Scenario:' / 'Scenario Outline:') <UntilLineEnd?>{{++buf2}} LineEnd { p.buf2 = p.buf2 + "\n" })*
+  (WS* !('@' Word / ScenarioKeyWord) <UntilLineEnd?>{{++buf2}} LineEnd { p.buf2 = p.buf2 + "\n" })*
   { p.beginFeature(trimWS(p.buf1), trimWSML(p.buf2), p.buftags); p.buftags = nil }
   ( Background / Scenario / Outline / BlankLine )*
   { p.endFeature() }
 
 Background <-
-  Tags 'Background:' WS* <UntilLineEnd?>{{buf1}} LineEnd
-  { p.beginBackground(trimWS(p.buf1), p.buftags); p.buftags = nil }
+  Tags 'Background:' WS* <UntilLineEnd?>{{buf1}} <>{{buf2}} LineEnd
+  (WS* !('@' Word / ScenarioKeyWord / StepKeyWord) <UntilLineEnd?>{{++buf2}} LineEnd { p.buf2 = p.buf2 + "\n" })*
+  { p.beginBackground(trimWS(p.buf1), trimWSML(p.buf2), p.buftags); p.buftags = nil }
   (Step / BlankLine)*
   { p.endBackground() }
 
 Scenario <-
-  Tags 'Scenario:' WS* <UntilLineEnd?>{{buf1}} LineEnd
-  { p.beginScenario(trimWS(p.buf1), p.buftags); p.buftags = nil }
+  Tags 'Scenario:' WS* <UntilLineEnd?>{{buf1}} <>{{buf2}} LineEnd
+  (WS* !('@' Word / ScenarioKeyWord / StepKeyWord) <UntilLineEnd?>{{++buf2}} LineEnd { p.buf2 = p.buf2 + "\n" })*
+  { p.beginScenario(trimWS(p.buf1), trimWSML(p.buf2), p.buftags); p.buftags = nil }
   (Step / BlankLine)*
   { p.endScenario() }
 
 Outline <-
-  Tags 'Scenario Outline:' WS* <UntilLineEnd?>{{buf1}} LineEnd
-  { p.beginOutline(trimWS(p.buf1), p.buftags); p.buftags = nil }
+  Tags 'Scenario Outline:' WS* <UntilLineEnd?>{{buf1}} <>{{buf2}} LineEnd
+  (WS* !('@' Word / ScenarioKeyWord / StepKeyWord) <UntilLineEnd?>{{++buf2}} LineEnd { p.buf2 = p.buf2 + "\n" })*
+  { p.beginOutline(trimWS(p.buf1), trimWSML(p.buf2), p.buftags); p.buftags = nil }
   (Step / BlankLine)*
   (OutlineExamples / BlankLine)*
   { p.endOutline() }
@@ -46,7 +56,7 @@ OutlineExamples <-
   { p.endOutlineExamples() }
 
 Step <-
-  WS* <('Given' / 'When' / 'Then' / 'And' / 'Or' / 'But')>{{buf1}}
+  WS* <(StepKeyWord)>{{buf1}}
   WS* <UntilLineEnd>{{buf2}} LineEnd
   { p.beginStep(trimWS(p.buf1), trimWS(p.buf2)) }
   StepArgument?
