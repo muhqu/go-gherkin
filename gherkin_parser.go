@@ -83,7 +83,7 @@ func (gp *gherkinPegBase) emit(e GherkinEvent) {
 	}
 }
 
-func (gp *gherkinPegBase) beginFeature(title string, description string, tags []string) {
+func (gp *gherkinPegBase) beginFeature(title, description string, tags []string) {
 	gp.log("BeginFeature: %#v: %#v tags:%+v", title, description, tags)
 	gp.emit(&events.FeatureEvent{title, description, tags})
 }
@@ -92,27 +92,27 @@ func (gp *gherkinPegBase) endFeature() {
 	gp.emit(&events.FeatureEndEvent{})
 }
 
-func (gp *gherkinPegBase) beginBackground(title string, tags []string) {
-	gp.log("BeginBackground: %#v tags:%+v", title, tags)
-	gp.emit(&events.BackgroundEvent{title, tags})
+func (gp *gherkinPegBase) beginBackground(title, description string, tags []string) {
+	gp.log("BeginBackground: %#v: %#v tags:%+v", title, description, tags)
+	gp.emit(&events.BackgroundEvent{title, description, tags})
 }
 func (gp *gherkinPegBase) endBackground() {
 	gp.log("EndBackground")
 	gp.emit(&events.BackgroundEndEvent{})
 }
 
-func (gp *gherkinPegBase) beginScenario(title string, tags []string) {
-	gp.log("BeginScenario: %#v tags:%+v", title, tags)
-	gp.emit(&events.ScenarioEvent{title, tags})
+func (gp *gherkinPegBase) beginScenario(title, description string, tags []string) {
+	gp.log("BeginScenario: %#v: %#v tags:%+v", title, description, tags)
+	gp.emit(&events.ScenarioEvent{title, description, tags})
 }
 func (gp *gherkinPegBase) endScenario() {
 	gp.log("EndScenario")
 	gp.emit(&events.ScenarioEndEvent{})
 }
 
-func (gp *gherkinPegBase) beginOutline(title string, tags []string) {
-	gp.log("BeginOutline: %#v tags:%+v", title, tags)
-	gp.emit(&events.OutlineEvent{title, tags})
+func (gp *gherkinPegBase) beginOutline(title, description string, tags []string) {
+	gp.log("BeginOutline: %#v: %#v tags:%+v", title, description, tags)
+	gp.emit(&events.OutlineEvent{title, description, tags})
 }
 func (gp *gherkinPegBase) endOutline() {
 	gp.log("EndOutline")

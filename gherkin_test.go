@@ -345,15 +345,6 @@ Feature: Hello World
 	assert.Equal(t, `"Lisa" should reply to "Bob": "Hello!"`, scenario1.Steps()[i].Text())
 }
 
-func TestParsingFailure(t *testing.T) {
-	_, err := parse(t, "", `
-Feature: Dead Simple Calculator
-  Scenario:
-    Hurtz
-`)
-	assert.Error(t, err)
-}
-
 func TestParsingSimpleComments(t *testing.T) {
 	gp := mustDomParse(t, "", `
 Feature: Hello World                             # feature comment

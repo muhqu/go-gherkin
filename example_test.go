@@ -69,7 +69,7 @@ Feature: Hello World
 	// Output:
 	//
 	// FeatureEvent("Hello World","The world is a beautiful place\nSo let people be nice to each other",["wip"])
-	// ScenarioEvent("Nice people",["nice" "people"])
+	// ScenarioEvent("Nice people","",["nice" "people"])
 	// StepEvent("Given","a nice person called \"Bob\"")
 	// StepEndEvent()
 	// StepEvent("And","a nice person called \"Lisa\"")
@@ -139,7 +139,7 @@ Feature: Hello World
 
 	// Output:
 	// BeginFeature: "Hello World": "The world is a beautiful place\nSo let people be nice to each other" tags:[wip]
-	// BeginScenario: "Nice people" tags:[nice people]
+	// BeginScenario: "Nice people": "" tags:[nice people]
 	// BeginStep: "Given": "a nice person called \"Bob\""
 	// EndStep
 	// BeginStep: "And": "a nice person called \"Lisa\""

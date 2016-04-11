@@ -60,15 +60,16 @@ func (*FeatureEndEvent) String() string {
 }
 
 type BackgroundEvent struct {
-	Title string
-	Tags  []string
+	Title       string
+	Description string
+	Tags        []string
 }
 
 func (*BackgroundEvent) EventType() EventType {
 	return BackgroundEventType
 }
 func (e *BackgroundEvent) String() string {
-	return fmt.Sprintf("BackgroundEvent(%q,%q)", e.Title, e.Tags)
+	return fmt.Sprintf("BackgroundEvent(%q,%q,%q)", e.Title, e.Description, e.Tags)
 }
 
 type BackgroundEndEvent struct {
@@ -82,15 +83,16 @@ func (*BackgroundEndEvent) String() string {
 }
 
 type ScenarioEvent struct {
-	Title string
-	Tags  []string
+	Title       string
+	Description string
+	Tags        []string
 }
 
 func (*ScenarioEvent) EventType() EventType {
 	return ScenarioEventType
 }
 func (e *ScenarioEvent) String() string {
-	return fmt.Sprintf("ScenarioEvent(%q,%q)", e.Title, e.Tags)
+	return fmt.Sprintf("ScenarioEvent(%q,%q,%q)", e.Title, e.Description, e.Tags)
 }
 
 type ScenarioEndEvent struct {
@@ -104,15 +106,16 @@ func (*ScenarioEndEvent) String() string {
 }
 
 type OutlineEvent struct {
-	Title string
-	Tags  []string
+	Title       string
+	Description string
+	Tags        []string
 }
 
 func (e *OutlineEvent) EventType() EventType {
 	return OutlineEventType
 }
 func (e *OutlineEvent) String() string {
-	return fmt.Sprintf("OutlineEvent(%q,%q)", e.Title, e.Tags)
+	return fmt.Sprintf("OutlineEvent(%q,%q,%q)", e.Title, e.Description, e.Tags)
 }
 
 type OutlineEndEvent struct {

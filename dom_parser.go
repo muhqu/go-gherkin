@@ -94,6 +94,7 @@ func (g *gherkinDOMParser) ProcessEvent(event GherkinEvent) {
 
 	case *BackgroundEvent:
 		node := NewMutableBackgroundNode(e.Title, e.Tags)
+		node.SetDescription(e.Description)
 		g.scenario = node
 		g.feature.SetBackground(node)
 		node.SetComment(g.comment)
@@ -101,6 +102,7 @@ func (g *gherkinDOMParser) ProcessEvent(event GherkinEvent) {
 
 	case *ScenarioEvent:
 		node := NewMutableScenarioNode(e.Title, e.Tags)
+		node.SetDescription(e.Description)
 		g.scenario = node
 		g.feature.AddScenario(node)
 		node.SetComment(g.comment)
@@ -108,6 +110,7 @@ func (g *gherkinDOMParser) ProcessEvent(event GherkinEvent) {
 
 	case *OutlineEvent:
 		node := NewMutableOutlineNode(e.Title, e.Tags)
+		node.SetDescription(e.Description)
 		g.scenario = node
 		g.outline = node
 		g.feature.AddScenario(node)
