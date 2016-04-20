@@ -117,3 +117,33 @@ func ExampleGherkinPrettyFormater_FormatStep_givenWhenThenComments() {
 	//      Then I should still have 2 banannas      # 4th step comment
 	// >
 }
+
+func ExampleGherkinPrettyFormater_FormatStep_givenWhenThenFixAnds() {
+	fmt.Println(">")
+
+	gfmt := &formater.GherkinPrettyFormater{CenterSteps: true, FixAnd: true, AnsiColors: false}
+
+	scenario := nodes.NewMutableScenarioNode("Awesome", nil)
+
+	scenario.AddStep(nodes.NewMutableStepNode("Given", "I have 4 banannas"))
+	scenario.AddStep(nodes.NewMutableStepNode("When", "I eat 1 bananna"))
+	scenario.AddStep(nodes.NewMutableStepNode("When", "I throw 1 bananna away"))
+	scenario.AddStep(nodes.NewMutableStepNode("Then", "I should still have 2 banannas"))
+	scenario.AddStep(nodes.NewMutableStepNode("When", "I eat 1 bananna"))
+	scenario.AddStep(nodes.NewMutableStepNode("When", "I buy 3 new banannas"))
+	scenario.AddStep(nodes.NewMutableStepNode("Then", "I should have 4 banannas again"))
+	gfmt.FormatScenario(scenario, os.Stdout)
+
+	fmt.Println(">")
+	// Output:
+	// >
+	//   Scenario: Awesome
+	//     Given I have 4 banannas
+	//      When I eat 1 bananna
+	//       And I throw 1 bananna away
+	//      Then I should still have 2 banannas
+	//      When I eat 1 bananna
+	//       And I buy 3 new banannas
+	//      Then I should have 4 banannas again
+	// >
+}

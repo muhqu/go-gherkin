@@ -26,6 +26,7 @@ type GherkinFormater interface {
 type GherkinPrettyFormater struct {
 	AnsiColors             bool
 	CenterSteps            bool
+	FixAnd                 bool
 	SkipSteps              bool
 	SkipComments           bool
 	NoAlignComments        bool
