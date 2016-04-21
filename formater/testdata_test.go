@@ -11,12 +11,10 @@ import (
 
 	"github.com/muhqu/go-gherkin"
 	"github.com/muhqu/go-gherkin/formater"
-	"github.com/muhqu/gomega-additions/unifieddiff"
-	"github.com/onsi/gomega"
 )
 
 func TestData(t *testing.T) {
-	gomega.RegisterTestingT(t)
+	// gomega.RegisterTestingT(t)
 
 	re := regexp.MustCompile(`(.*)\.input\..*\.feature`)
 
@@ -75,9 +73,9 @@ func CheckEqual(t *testing.T, msg string, expected, actual []byte) bool {
 		return true
 	}
 	t.Error(msg)
-	m := unifieddiff.MatchString(string(expected))
-	m.Match(string(actual))
-	t.Error(m.FailureMessage(""))
+	// m := unifieddiff.MatchString(string(expected))
+	// m.Match(string(actual))
+	// t.Error(m.FailureMessage(""))
 	return false
 }
 
