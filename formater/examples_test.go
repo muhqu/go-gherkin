@@ -90,7 +90,7 @@ func ExampleGherkinPrettyFormater_FormatStep_givenWhenThenComments() {
 
 	scenario := nodes.NewMutableScenarioNode("Awesome", nil)
 	scenario.SetComment(nodes.NewCommentNode("scenario comment"))
-	step := nodes.NewMutableStepNode("Given", "I have 2 banannas")
+	step := nodes.NewMutableStepNode("Given", "I have 4 banannas")
 	step.SetComment(nodes.NewCommentNode("first step comment"))
 	scenario.AddStep(step)
 
@@ -111,9 +111,39 @@ func ExampleGherkinPrettyFormater_FormatStep_givenWhenThenComments() {
 	// Output:
 	// >
 	//   Scenario: Awesome                           # scenario comment
-	//     Given I have 2 banannas                   # first step comment
+	//     Given I have 4 banannas                   # first step comment
 	//      When I eat 1 bananna                     # 2nd step comment
 	//       And I throw 1 bananna away              # 3rd step comment
 	//      Then I should still have 2 banannas      # 4th step comment
+	// >
+}
+
+func ExampleGherkinPrettyFormater_FormatStep_givenWhenThenFixAnds() {
+	fmt.Println(">")
+
+	gfmt := &formater.GherkinPrettyFormater{CenterSteps: true, FixAnd: true, AnsiColors: false}
+
+	scenario := nodes.NewMutableScenarioNode("Awesome", nil)
+
+	scenario.AddStep(nodes.NewMutableStepNode("Given", "I have 4 banannas"))
+	scenario.AddStep(nodes.NewMutableStepNode("When", "I eat 1 bananna"))
+	scenario.AddStep(nodes.NewMutableStepNode("When", "I throw 1 bananna away"))
+	scenario.AddStep(nodes.NewMutableStepNode("Then", "I should still have 2 banannas"))
+	scenario.AddStep(nodes.NewMutableStepNode("When", "I eat 1 bananna"))
+	scenario.AddStep(nodes.NewMutableStepNode("When", "I buy 3 new banannas"))
+	scenario.AddStep(nodes.NewMutableStepNode("Then", "I should have 4 banannas again"))
+	gfmt.FormatScenario(scenario, os.Stdout)
+
+	fmt.Println(">")
+	// Output:
+	// >
+	//   Scenario: Awesome
+	//     Given I have 4 banannas
+	//      When I eat 1 bananna
+	//       And I throw 1 bananna away
+	//      Then I should still have 2 banannas
+	//      When I eat 1 bananna
+	//       And I buy 3 new banannas
+	//      Then I should have 4 banannas again
 	// >
 }
