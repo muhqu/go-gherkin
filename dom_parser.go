@@ -11,12 +11,14 @@ type GherkinDOM interface {
 type GherkinDOMParser interface {
 	GherkinParser
 	GherkinDOM
+	ParseDOM() (GherkinDOM, error)
 	ParseFeature() (FeatureNode, error)
 }
 
 type gherkinDOMParser struct {
 	gp             GherkinParser
 	processed      bool
+	parseErr       error
 	feature        MutableFeatureNode
 	scenario       MutableScenarioNode
 	background     MutableBackgroundNode
@@ -69,14 +71,23 @@ func (g *gherkinDOMParser) Feature() FeatureNode {
 	return g.feature
 }
 
-func (g *gherkinDOMParser) ParseFeature() (FeatureNode, error) {
+func (g *gherkinDOMParser) ParseDOM() (GherkinDOM, error) {
 	g.processed = true
 	g.gp.Init()
 	if err := g.gp.Parse(); err != nil {
+		g.parseErr = err
 		return nil, err
 	}
 	g.gp.Execute()
-	return g.feature, nil
+	return g, nil
+}
+
+func (g *gherkinDOMParser) ParseFeature() (FeatureNode, error) {
+	dom, err := g.ParseDOM()
+	if err != nil {
+		return nil, err
+	}
+	return dom.Feature(), nil
 }
 
 func (g *gherkinDOMParser) ProcessEvent(event GherkinEvent) {

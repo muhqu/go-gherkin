@@ -204,6 +204,8 @@ type styledString struct {
 	width int
 }
 
+var blank *styledString = &styledString{"", 0}
+
 func (s *styledString) String() string {
 	return s.str
 }
@@ -245,16 +247,15 @@ func (g *gherkinPrettyPrinter) FormatFeature(node nodes.FeatureNode) {
 	if node.Description() != "" {
 		g.write(prefixLines("  ", node.Description()) + "\n")
 	}
-	g.write("\n")
 
 	if !g.gpf.SkipSteps && node.Background() != nil {
-		g.FormatScenario(node.Background())
 		g.write("\n")
+		g.FormatScenario(node.Background())
 	}
 
 	for _, scenario := range node.Scenarios() {
-		g.FormatScenario(scenario)
 		g.write("\n")
+		g.FormatScenario(scenario)
 	}
 }
 
@@ -297,11 +298,25 @@ func (g *gherkinPrettyPrinter) FormatScenario(node nodes.ScenarioNode) {
 	}
 
 	if !g.gpf.SkipSteps {
+		var needBlankLine bool
 		for _, line := range node.Lines() {
 			if step, ok := line.(nodes.StepNode); ok {
+				if needBlankLine {
+					g.linebuff.Writeln(blank)
+				}
 				g.formatStep(step)
+				needBlankLine = false
 			} else if blankLine, ok := line.(nodes.BlankLineNode); ok {
-				g.linebuff.Writeln(&styledString{"  ", 0}, g.coloredComment(blankLine.Comment()))
+				isReallyBlank := blankLine.Comment() == nil
+				if isReallyBlank {
+					needBlankLine = true
+				} else {
+					if needBlankLine {
+						g.linebuff.Writeln(blank)
+					}
+					g.linebuff.Writeln(&styledString{"  ", 0}, g.coloredComment(blankLine.Comment()))
+					needBlankLine = false
+				}
 			}
 		}
 		if node.NodeType() == nodes.OutlineNodeType {
@@ -310,7 +325,7 @@ func (g *gherkinPrettyPrinter) FormatScenario(node nodes.ScenarioNode) {
 				if examples.Title() != "" {
 					title = " " + examples.Title()
 				}
-				g.write("\n")
+				g.linebuff.Writeln(blank)
 				g.linebuff.Writeln(
 					g.colored(c_WHITE, "    Examples:%s", title),
 					g.coloredComment(examples.Comment()),
