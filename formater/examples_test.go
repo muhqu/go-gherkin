@@ -90,7 +90,7 @@ func ExampleGherkinPrettyFormater_FormatStep_givenWhenThenComments() {
 
 	scenario := nodes.NewMutableScenarioNode("Awesome", nil)
 	scenario.SetComment(nodes.NewCommentNode("scenario comment"))
-	step := nodes.NewMutableStepNode("Given", "I have 2 banannas")
+	step := nodes.NewMutableStepNode("Given", "I have 4 banannas")
 	step.SetComment(nodes.NewCommentNode("first step comment"))
 	scenario.AddStep(step)
 
@@ -111,7 +111,7 @@ func ExampleGherkinPrettyFormater_FormatStep_givenWhenThenComments() {
 	// Output:
 	// >
 	//   Scenario: Awesome                           # scenario comment
-	//     Given I have 2 banannas                   # first step comment
+	//     Given I have 4 banannas                   # first step comment
 	//      When I eat 1 bananna                     # 2nd step comment
 	//       And I throw 1 bananna away              # 3rd step comment
 	//      Then I should still have 2 banannas      # 4th step comment
