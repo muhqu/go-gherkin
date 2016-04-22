@@ -300,12 +300,19 @@ func (g *gherkinPrettyPrinter) FormatScenario(node nodes.ScenarioNode) {
 
 	if !g.gpf.SkipSteps {
 		var needBlankLine bool
+		var implicitAnd bool
+		var lastEffectiveStepType string
 		for _, line := range node.Lines() {
 			if step, ok := line.(nodes.StepNode); ok {
 				if needBlankLine {
+					lastEffectiveStepType = ""
 					g.linebuff.Writeln(blank)
 				}
-				g.formatStep(step)
+				implicitAnd = (g.gpf.FixAnd && lastEffectiveStepType == step.StepType() && step.StepType() != "*")
+				g.formatStep(step, implicitAnd)
+				if step.StepType() != "And" {
+					lastEffectiveStepType = step.StepType()
+				}
 				needBlankLine = false
 			} else if blankLine, ok := line.(nodes.BlankLineNode); ok {
 				isReallyBlank := blankLine.Comment() == nil
@@ -339,7 +346,7 @@ func (g *gherkinPrettyPrinter) FormatScenario(node nodes.ScenarioNode) {
 }
 
 func (g *gherkinPrettyPrinter) FormatStep(node nodes.StepNode) {
-	g.formatStep(node)
+	g.formatStep(node, false)
 	g.linebuff.Flush()
 }
 
@@ -354,16 +361,24 @@ func (g *gherkinPrettyPrinter) coloredComment(node nodes.CommentNode) *styledStr
 	return &styledString{}
 }
 
-func (g *gherkinPrettyPrinter) formatStep(node nodes.StepNode) {
+func (g *gherkinPrettyPrinter) formatStep(node nodes.StepNode, implicitAnd bool) {
 	var stepTypeFmt string
 	if g.gpf.CenterSteps {
 		stepTypeFmt = "%9s"
 	} else {
 		stepTypeFmt = "    %s"
 	}
+
+	var stepType string
+	if implicitAnd {
+		stepType = "And"
+	} else {
+		stepType = node.StepType()
+	}
+
 	g.linebuff.Writeln(
 		g.joinStyledStrings(
-			g.colored(c_BOLD_GREEN, stepTypeFmt, node.StepType()),
+			g.colored(c_BOLD_GREEN, stepTypeFmt, stepType),
 			g.colored(c_GREEN, " %s", node.Text()),
 		),
 		g.coloredComment(node.Comment()),
